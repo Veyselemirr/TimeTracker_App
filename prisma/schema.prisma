@@ -1,0 +1,134 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Kullanıcılar tablosu
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  username  String   @unique
+  name      String?
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // İlişkiler
+  accounts    Account[]
+  sessions    Session[]
+  categories  Category[]
+  timeEntries TimeEntry[]
+  achievements UserAchievement[]
+  
+  @@map("users")
+}
+
+// Oturum yönetimi (NextAuth için)
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("sessions")
+}
+
+// Kategoriler (Yazılım, Matematik, Kitap Okuma vb.)
+model Category {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  color       String   @default("#3B82F6") // Hex renk kodu
+  icon        String?  // Icon adı (lucide-react)
+  isDefault   Boolean  @default(false) // Default kategoriler (silinemeyen)
+  userId      String   // Her kullanıcının kendi kategorileri
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // İlişkiler
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  timeEntries TimeEntry[]
+
+  @@unique([name, userId]) // Aynı kullanıcı için kategori isimleri unique
+  @@map("categories")
+}
+
+// Zaman kayıtları (her çalışma seansı)
+model TimeEntry {
+  id          String    @id @default(cuid())
+  startTime   DateTime
+  endTime     DateTime?
+  duration    Int?      // Saniye cinsinden toplam süre
+  description String?   // Opsiyonel açıklama
+  points      Int       @default(0) // Bu session'dan alınan puan
+  userId      String
+  categoryId  String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // İlişkiler
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@map("time_entries")
+}
+
+// Rozetler/Başarımlar
+model Achievement {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String
+  icon        String   // Icon adı
+  condition   String   // JSON string (hangi şartla alınır)
+  points      Int      @default(0) // Bu rozetten alınan puan
+  createdAt   DateTime @default(now())
+
+  // İlişkiler
+  users UserAchievement[]
+
+  @@map("achievements")
+}
+
+// Kullanıcıların aldığı rozetler (many-to-many)
+model UserAchievement {
+  id            String   @id @default(cuid())
+  userId        String
+  achievementId String
+  achievedAt    DateTime @default(now())
+
+  // İlişkiler
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId]) // Aynı rozeti tekrar alamaz
+  @@map("user_achievements")
+}
