@@ -13,6 +13,8 @@ import {
   Plus
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 
 // API'den gelecek kategori tipi
 interface Category {
@@ -25,17 +27,31 @@ interface Category {
 }
 
 export default function TimerPage() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
   const { setSelectedCategory, selectedCategory } = useTimerStore()
   const [categories, setCategories] = useState<Category[]>([])
   const [timeEntries, setTimeEntries] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [entriesLoading, setEntriesLoading] = useState(true)
-  
+
+  // Authentication kontrolü
+  useEffect(() => {
+    if (status === 'loading') return // Hala yükleniyor
+
+    if (status === 'unauthenticated') {
+      router.push('/auth/signin')
+      return
+    }
+  }, [status, router])
+
   // Kategorileri API'den çek
   useEffect(() => {
+    if (!session?.user?.id) return
+
     const fetchCategories = async () => {
       try {
-        const response = await fetch('/api/categories?userId=temp-user')
+        const response = await fetch(`/api/categories?userId=${session.user.id}`)
         const data = await response.json()
         setCategories(data.categories || [])
       } catch (error) {
@@ -46,14 +62,16 @@ export default function TimerPage() {
     }
 
     fetchCategories()
-  }, [])
+  }, [session?.user?.id])
 
   // Bugünkü zaman kayıtlarını çek
   useEffect(() => {
+    if (!session?.user?.id) return
+
     const fetchTodayEntries = async () => {
       try {
         const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
-        const response = await fetch(`/api/time-entries?userId=temp-user&date=${today}`)
+        const response = await fetch(`/api/time-entries?userId=${session.user.id}&date=${today}`)
         const data = await response.json()
         setTimeEntries(data.timeEntries || [])
       } catch (error) {
@@ -68,7 +86,7 @@ export default function TimerPage() {
     // Her 10 saniyede bir güncelle
     const interval = setInterval(fetchTodayEntries, 10000)
     return () => clearInterval(interval)
-  }, [])
+  }, [session?.user?.id])
 
   // Kategori bazında toplam süreleri hesapla
   const getCategoryStats = () => {

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useSession, signOut } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -20,20 +21,18 @@ import {
   LogOut,
   Trophy,
   Menu,
-  X
+  X,
+  LogIn
 } from 'lucide-react'
 import { useTimerStore, formatTime } from '@/store/timer-store'
 
 export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const { isRunning, currentTime } = useTimerStore()
+  const { data: session, status } = useSession()
 
-  // Mock user data - gerçek auth sisteminden gelecek
-  const user = {
-    name: 'Ahmet Yılmaz',
-    email: 'ahmet@example.com',
-    avatar: null,
-    points: 1250
+  const handleSignOut = () => {
+    signOut({ callbackUrl: '/auth/signin' })
   }
 
   return (
@@ -71,85 +70,106 @@ export function Navbar() {
           </div>
 
           {/* Orta - Aktif Timer Durumu */}
-          {isRunning && (
-            <div className="hidden md:flex items-center gap-2 bg-green-50 dark:bg-green-900/20 px-4 py-2 rounded-full">
+          {isRunning && session && (
+            <div className="hidden md:flex items-center gap-2 bg-green-50 px-4 py-2 rounded-full border border-green-200">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              <span className="text-sm font-medium text-green-700 dark:text-green-300">
+              <span className="text-sm font-medium text-green-700">
                 Çalışıyor: {formatTime(currentTime)}
               </span>
             </div>
           )}
 
-          {/* Sağ Taraf - Bildirimler ve Profil */}
+          {/* Sağ Taraf - Authentication */}
           <div className="flex items-center gap-3">
             
-            {/* Puan Badge */}
-            <Badge variant="secondary" className="hidden sm:flex items-center gap-1">
-              <Trophy className="h-3 w-3" />
-              {user.points} Puan
-            </Badge>
+            {status === 'loading' ? (
+              <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse" />
+            ) : session ? (
+              <>
+                {/* Puan Badge */}
+                <Badge variant="secondary" className="hidden sm:flex items-center gap-1 bg-emerald-100 text-emerald-700">
+                  <Trophy className="h-3 w-3" />
+                  1250 Puan
+                </Badge>
 
-            {/* Bildirimler */}
-            <Button variant="ghost" size="sm" className="relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                2
-              </span>
-            </Button>
-
-            {/* Profil Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.avatar || ''} alt={user.name} />
-                    <AvatarFallback>
-                      {user.name.split(' ').map(n => n[0]).join('')}
-                    </AvatarFallback>
-                  </Avatar>
+                {/* Bildirimler */}
+                <Button variant="ghost" size="sm" className="relative">
+                  <Bell className="h-5 w-5" />
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                    2
+                  </span>
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end">
-                <div className="flex items-center justify-start gap-2 p-2">
-                  <div className="flex flex-col space-y-1 leading-none">
-                    <p className="font-medium">{user.name}</p>
-                    <p className="w-[200px] truncate text-sm text-muted-foreground">
-                      {user.email}
-                    </p>
-                  </div>
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/profile" className="cursor-pointer">
-                    <User className="mr-2 h-4 w-4" />
-                    Profil
+
+                {/* Profil Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={session.user?.image || ''} alt={session.user?.name || ''} />
+                        <AvatarFallback className="bg-emerald-100 text-emerald-700">
+                          {session.user?.name?.split(' ').map(n => n[0]).join('') || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56" align="end">
+                    <div className="flex items-center justify-start gap-2 p-2">
+                      <div className="flex flex-col space-y-1 leading-none">
+                        <p className="font-medium">{session.user?.name}</p>
+                        <p className="w-[200px] truncate text-sm text-muted-foreground">
+                          {session.user?.email}
+                        </p>
+                      </div>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/profile" className="cursor-pointer">
+                        <User className="mr-2 h-4 w-4" />
+                        Profil
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/settings" className="cursor-pointer">
+                        <Settings className="mr-2 h-4 w-4" />
+                        Ayarlar
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={handleSignOut} className="cursor-pointer text-red-600">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Çıkış Yap
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            ) : (
+              /* Giriş yapılmamış */
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" asChild>
+                  <Link href="/auth/signin">
+                    <LogIn className="mr-2 h-4 w-4" />
+                    Giriş Yap
                   </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link href="/settings" className="cursor-pointer">
-                    <Settings className="mr-2 h-4 w-4" />
-                    Ayarlar
+                </Button>
+                <Button asChild className="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700">
+                  <Link href="/auth/signup">
+                    Kayıt Ol
                   </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem className="cursor-pointer text-red-600">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Çıkış Yap
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       {/* Mobile Menu */}
       {isMobileMenuOpen && (
-        <div className="lg:hidden border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+        <div className="lg:hidden border-t border-emerald-200 bg-white/95 backdrop-blur-sm">
           <div className="px-4 py-2 space-y-1">
-            {isRunning && (
-              <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 px-3 py-2 rounded-lg">
+            {isRunning && session && (
+              <div className="flex items-center gap-2 bg-green-50 px-3 py-2 rounded-lg border border-green-200">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-                <span className="text-sm font-medium text-green-700 dark:text-green-300">
+                <span className="text-sm font-medium text-green-700">
                   Çalışıyor: {formatTime(currentTime)}
                 </span>
               </div>

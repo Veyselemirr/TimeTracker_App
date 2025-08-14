@@ -35,7 +35,13 @@ export const useTimerStore = create<TimerState>((set, get) => ({
   // Timer başlat - API'ye kaydet
   startTimer: async (categoryId: string, description: string = '') => {
     try {
+      console.log('🚀 Starting timer with categoryId:', categoryId)
+      
       const now = new Date()
+      
+      // Session'dan user ID al (client-side)
+      const session = await fetch('/api/auth/session').then(res => res.json())
+      const userId = session?.user?.id || 'temp-user'
       
       // API'ye yeni time entry oluştur
       const response = await fetch('/api/time-entries', {
@@ -47,15 +53,18 @@ export const useTimerStore = create<TimerState>((set, get) => ({
           startTime: now.toISOString(),
           categoryId,
           description,
-          userId: 'temp-user' // Geçici user ID
+          userId
         })
       })
 
       if (!response.ok) {
-        throw new Error('Timer başlatılamadı')
+        const errorData = await response.json()
+        console.error('❌ Timer start failed:', errorData)
+        throw new Error(`Timer başlatılamadı: ${errorData.error}`)
       }
 
       const { timeEntry } = await response.json()
+      console.log('✅ Timer started successfully:', timeEntry)
 
       set({
         isRunning: true,
@@ -67,6 +76,7 @@ export const useTimerStore = create<TimerState>((set, get) => ({
       })
     } catch (error) {
       console.error('Timer start error:', error)
+      alert(`Timer başlatılamadı: ${error}`)
       // Fallback: Local state'e kaydet
       set({
         isRunning: true,
