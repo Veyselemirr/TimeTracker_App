@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { Navbar } from '@/components/layout/navbar'
 import { Sidebar } from '@/components/layout/sidebar'
+import { SessionProvider } from '@/components/providers/session-provider'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -20,20 +21,22 @@ export default function RootLayout({
   return (
     <html lang="tr" suppressHydrationWarning>
       <body className={inter.className}>
-        <div className="min-h-screen">
-          {/* Üst Navigasyon */}
-          <Navbar />
-          
-          {/* Sol Sidebar */}
-          <Sidebar />
-          
-          {/* Ana İçerik - Sidebar margin'i ile */}
-          <main className="ml-64 mt-16 p-6">
-            <div className="max-w-7xl mx-auto">
-              {children}
-            </div>
-          </main>
-        </div>
+        <SessionProvider>
+          <div className="min-h-screen">
+            {/* Üst Navigasyon */}
+            <Navbar />
+            
+            {/* Sol Sidebar */}
+            <Sidebar />
+            
+            {/* Ana İçerik - Sidebar margin'i ile */}
+            <main className="ml-64 mt-16 p-6">
+              <div className="max-w-7xl mx-auto">
+                {children}
+              </div>
+            </main>
+          </div>
+        </SessionProvider>
       </body>
     </html>
   )
