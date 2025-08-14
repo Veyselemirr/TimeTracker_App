@@ -31,21 +31,37 @@ export function CircularTimer({ size = 420 }: CircularTimerProps) {
   const [timerMode, setTimerMode] = useState<'stopwatch' | 'countdown'>('stopwatch')
   const [targetTime, setTargetTime] = useState(3600) // 1 saat default
 
-  // Kategori renklerini tanımla
+  // Kategori renklerini API'den gelen hex kodlara göre tanımla
   const categoryColors = {
-    'software': { stroke: '#10b981', bg: 'from-emerald-400 to-emerald-600' },
-    'math': { stroke: '#3b82f6', bg: 'from-blue-400 to-blue-600' },
-    'reading': { stroke: '#8b5cf6', bg: 'from-purple-400 to-purple-600' },
-    'exercise': { stroke: '#f97316', bg: 'from-orange-400 to-orange-600' },
-    'music': { stroke: '#ec4899', bg: 'from-pink-400 to-pink-600' },
-    'design': { stroke: '#6366f1', bg: 'from-indigo-400 to-indigo-600' },
+    '#10b981': { stroke: '#10b981', bg: 'from-emerald-400 to-emerald-600' }, // Yazılım
+    '#3b82f6': { stroke: '#3b82f6', bg: 'from-blue-400 to-blue-600' },       // Matematik
+    '#8b5cf6': { stroke: '#8b5cf6', bg: 'from-purple-400 to-purple-600' },   // Kitap
+    '#f97316': { stroke: '#f97316', bg: 'from-orange-400 to-orange-600' },   // Egzersiz
+    '#ec4899': { stroke: '#ec4899', bg: 'from-pink-400 to-pink-600' },       // Müzik
+    '#6366f1': { stroke: '#6366f1', bg: 'from-indigo-400 to-indigo-600' },   // Tasarım
     'default': { stroke: '#10b981', bg: 'from-emerald-400 to-emerald-600' }
   }
 
-  // Aktif renk seçimi
-  const activeColor = selectedCategory ? 
-    categoryColors[selectedCategory as keyof typeof categoryColors] || categoryColors.default : 
-    categoryColors.default
+  // Aktif renk seçimi - selectedCategory artık hex rengi değil ID
+  const [selectedCategoryColor, setSelectedCategoryColor] = useState('#10b981')
+  
+  // Seçilen kategorinin rengini API'den al
+  useEffect(() => {
+    if (selectedCategory) {
+      // API'den kategori bilgisini çek
+      fetch(`/api/categories?userId=temp-user`)
+        .then(res => res.json())
+        .then(data => {
+          const category = data.categories?.find((cat: any) => cat.id === selectedCategory)
+          if (category) {
+            setSelectedCategoryColor(category.color)
+          }
+        })
+        .catch(console.error)
+    }
+  }, [selectedCategory])
+
+  const activeColor = categoryColors[selectedCategoryColor as keyof typeof categoryColors] || categoryColors.default
 
   // Progress hesaplama
   const progress = timerMode === 'countdown' 
@@ -79,7 +95,7 @@ export function CircularTimer({ size = 420 }: CircularTimerProps) {
   }, [isRunning, tick, timerMode, currentTime, targetTime, stopTimer])
 
   const handleStart = () => {
-    const categoryId = selectedCategory || 'software' // Default category
+    const categoryId = selectedCategory || 'fallback' // Fallback ID
     startTimer(categoryId, `${timerMode === 'countdown' ? 'Countdown' : 'Stopwatch'} çalışması`)
   }
 

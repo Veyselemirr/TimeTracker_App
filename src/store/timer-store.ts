@@ -8,11 +8,12 @@ interface TimerState {
   startTime: Date | null
   activeCategory: string | null
   selectedCategory: string | null // Seçilen kategori
+  activeEntryId: string | null // Aktif zaman kaydının ID'si
   description: string
   
   // Actions (fonksiyonlar)
-  startTimer: (categoryId: string, description?: string) => void
-  stopTimer: () => void
+  startTimer: (categoryId: string, description?: string) => Promise<void>
+  stopTimer: () => Promise<void>
   pauseTimer: () => void
   resetTimer: () => void
   setDescription: (description: string) => void
@@ -28,29 +29,96 @@ export const useTimerStore = create<TimerState>((set, get) => ({
   startTime: null,
   activeCategory: null,
   selectedCategory: null,
+  activeEntryId: null,
   description: '',
 
-  // Timer başlat
-  startTimer: (categoryId: string, description: string = '') => {
-    set({
-      isRunning: true,
-      startTime: new Date(),
-      activeCategory: categoryId,
-      description: description,
-      currentTime: 0
-    })
+  // Timer başlat - API'ye kaydet
+  startTimer: async (categoryId: string, description: string = '') => {
+    try {
+      const now = new Date()
+      
+      // API'ye yeni time entry oluştur
+      const response = await fetch('/api/time-entries', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          startTime: now.toISOString(),
+          categoryId,
+          description,
+          userId: 'temp-user' // Geçici user ID
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Timer başlatılamadı')
+      }
+
+      const { timeEntry } = await response.json()
+
+      set({
+        isRunning: true,
+        startTime: now,
+        activeCategory: categoryId,
+        activeEntryId: timeEntry.id,
+        description: description,
+        currentTime: 0
+      })
+    } catch (error) {
+      console.error('Timer start error:', error)
+      // Fallback: Local state'e kaydet
+      set({
+        isRunning: true,
+        startTime: new Date(),
+        activeCategory: categoryId,
+        description: description,
+        currentTime: 0
+      })
+    }
   },
 
-  // Timer durdur ve kaydet
-  stopTimer: () => {
+  // Timer durdur ve API'yi güncelle
+  stopTimer: async () => {
     const state = get()
-    if (state.isRunning && state.startTime && state.activeCategory) {
-      // TODO: Veritabanına kaydet
-      console.log('Timer stopped:', {
-        duration: state.currentTime,
-        categoryId: state.activeCategory,
-        description: state.description
-      })
+    
+    try {
+      if (state.activeEntryId && state.startTime) {
+        const endTime = new Date()
+        const duration = state.currentTime
+
+        // API'yi güncelle
+        const response = await fetch('/api/time-entries', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id: state.activeEntryId,
+            endTime: endTime.toISOString(),
+            duration
+          })
+        })
+
+        if (response.ok) {
+          const { timeEntry } = await response.json()
+          console.log('✅ Timer completed successfully:', {
+            duration: `${Math.floor(duration / 60)}d ${duration % 60}s`,
+            category: timeEntry.category?.name,
+            points: timeEntry.points
+          })
+          
+          // Başarı bildirimi
+          if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification('🎉 Çalışma tamamlandı!', {
+              body: `${Math.floor(duration / 60)} dakika çalıştın ve ${timeEntry.points} puan kazandın!`,
+              icon: '/favicon.ico'
+            })
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Timer stop error:', error)
     }
     
     set({
@@ -58,6 +126,7 @@ export const useTimerStore = create<TimerState>((set, get) => ({
       currentTime: 0,
       startTime: null,
       activeCategory: null,
+      activeEntryId: null,
       description: ''
     })
   },
@@ -74,6 +143,7 @@ export const useTimerStore = create<TimerState>((set, get) => ({
       currentTime: 0,
       startTime: null,
       activeCategory: null,
+      activeEntryId: null,
       description: ''
     })
   },
