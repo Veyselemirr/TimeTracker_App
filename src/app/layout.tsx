@@ -20,21 +20,19 @@ export default function RootLayout({
   return (
     <html lang="tr" suppressHydrationWarning>
       <body className={inter.className}>
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="min-h-screen">
           {/* Üst Navigasyon */}
           <Navbar />
           
-          <div className="flex">
-            {/* Sol Sidebar */}
-            <Sidebar />
-            
-            {/* Ana İçerik */}
-            <main className="flex-1 p-6 lg:ml-64 mt-16">
-              <div className="max-w-7xl mx-auto">
-                {children}
-              </div>
-            </main>
-          </div>
+          {/* Sol Sidebar */}
+          <Sidebar />
+          
+          {/* Ana İçerik - Sidebar margin'i ile */}
+          <main className="ml-64 mt-16 p-6">
+            <div className="max-w-7xl mx-auto">
+              {children}
+            </div>
+          </main>
         </div>
       </body>
     </html>

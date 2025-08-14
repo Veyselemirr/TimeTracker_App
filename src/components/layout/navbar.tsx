@@ -37,7 +37,7 @@ export function Navbar() {
   }
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-emerald-50 to-green-50 backdrop-blur-md border-b border-emerald-200 shadow-sm">
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           
@@ -59,11 +59,11 @@ export function Navbar() {
 
             {/* Logo */}
             <Link href="/" className="flex items-center gap-2">
-              <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-2">
+              <div className="bg-gradient-to-r from-emerald-500 to-green-600 rounded-lg p-2 shadow-sm">
                 <Timer className="h-6 w-6 text-white" />
               </div>
               <div className="hidden sm:block">
-                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                <h1 className="text-xl font-bold text-gray-800">
                   TimeTracker Pro
                 </h1>
               </div>

@@ -7,6 +7,7 @@ interface TimerState {
   currentTime: number // saniye cinsinden
   startTime: Date | null
   activeCategory: string | null
+  selectedCategory: string | null // Seçilen kategori
   description: string
   
   // Actions (fonksiyonlar)
@@ -15,6 +16,7 @@ interface TimerState {
   pauseTimer: () => void
   resetTimer: () => void
   setDescription: (description: string) => void
+  setSelectedCategory: (categoryId: string) => void
   tick: () => void // Her saniye çağrılacak
 }
 
@@ -25,6 +27,7 @@ export const useTimerStore = create<TimerState>((set, get) => ({
   currentTime: 0,
   startTime: null,
   activeCategory: null,
+  selectedCategory: null,
   description: '',
 
   // Timer başlat
@@ -78,6 +81,11 @@ export const useTimerStore = create<TimerState>((set, get) => ({
   // Açıklama güncelle
   setDescription: (description: string) => {
     set({ description })
+  },
+
+  // Kategori seç
+  setSelectedCategory: (categoryId: string) => {
+    set({ selectedCategory: categoryId })
   },
 
   // Her saniye çağrılacak (süreyi artır)
