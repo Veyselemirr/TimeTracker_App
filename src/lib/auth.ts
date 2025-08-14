@@ -1,3 +1,4 @@
+// src/lib/auth.ts
 import NextAuth from "next-auth"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import CredentialsProvider from "next-auth/providers/credentials"
@@ -71,6 +72,7 @@ const authConfig: NextAuthConfig = {
 
   pages: {
     signIn: "/auth/signin",
+    // newUser kullanımı opsiyonel, signup sayfasına manuel yönlendirme yapacağız
     error: "/auth/error",
   },
 
