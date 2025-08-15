@@ -1,174 +1,272 @@
+// src/store/timer-store.ts
 import { create } from 'zustand'
 
-// Timer state'inin tipi
 interface TimerState {
-  // Mevcut durum
+  // State
   isRunning: boolean
-  currentTime: number // saniye cinsinden
+  currentTime: number
   startTime: Date | null
-  activeCategory: string | null
-  selectedCategory: string | null // Seçilen kategori
-  activeEntryId: string | null // Aktif zaman kaydının ID'si
+  activeTimerId: string | null
+  selectedCategory: string | null
   description: string
+  isLoading: boolean
   
-  // Actions (fonksiyonlar)
+  // Actions
   startTimer: (categoryId: string, description?: string) => Promise<void>
   stopTimer: () => Promise<void>
   pauseTimer: () => void
-  resetTimer: () => void
+  resumeTimer: () => void
+  resetTimer: () => Promise<void>
+  loadActiveTimer: () => Promise<void>
+  setSelectedCategory: (categoryId: string | null) => void
   setDescription: (description: string) => void
-  setSelectedCategory: (categoryId: string) => void
-  tick: () => void // Her saniye çağrılacak
+  tick: () => void
 }
 
-// Zustand store oluştur
 export const useTimerStore = create<TimerState>((set, get) => ({
   // Initial state
   isRunning: false,
   currentTime: 0,
   startTime: null,
-  activeCategory: null,
+  activeTimerId: null,
   selectedCategory: null,
-  activeEntryId: null,
   description: '',
-
-  // Timer başlat - API'ye kaydet
-  startTimer: async (categoryId: string, description: string = '') => {
-    try {
-      console.log('🚀 Starting timer with categoryId:', categoryId)
-      
-      const now = new Date()
-      
-      // Session'dan user ID al (client-side)
-      const session = await fetch('/api/auth/session').then(res => res.json())
-      const userId = session?.user?.id || 'temp-user'
-      
-      // API'ye yeni time entry oluştur
-      const response = await fetch('/api/time-entries', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          startTime: now.toISOString(),
-          categoryId,
-          description,
-          userId
-        })
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        console.error('❌ Timer start failed:', errorData)
-        throw new Error(`Timer başlatılamadı: ${errorData.error}`)
-      }
-
-      const { timeEntry } = await response.json()
-      console.log('✅ Timer started successfully:', timeEntry)
-
-      set({
-        isRunning: true,
-        startTime: now,
-        activeCategory: categoryId,
-        activeEntryId: timeEntry.id,
-        description: description,
-        currentTime: 0
-      })
-    } catch (error) {
-      console.error('Timer start error:', error)
-      alert(`Timer başlatılamadı: ${error}`)
-      // Fallback: Local state'e kaydet
-      set({
-        isRunning: true,
-        startTime: new Date(),
-        activeCategory: categoryId,
-        description: description,
-        currentTime: 0
-      })
-    }
-  },
-
-  // Timer durdur ve API'yi güncelle
-  stopTimer: async () => {
-    const state = get()
-    
-    try {
-      if (state.activeEntryId && state.startTime) {
-        const endTime = new Date()
-        const duration = state.currentTime
-
-        // API'yi güncelle
-        const response = await fetch('/api/time-entries', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            id: state.activeEntryId,
-            endTime: endTime.toISOString(),
-            duration
-          })
-        })
-
-        if (response.ok) {
-          const { timeEntry } = await response.json()
-          console.log('✅ Timer completed successfully:', {
-            duration: `${Math.floor(duration / 60)}d ${duration % 60}s`,
-            category: timeEntry.category?.name,
-            points: timeEntry.points
-          })
-          
-          // Başarı bildirimi
-          if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification('🎉 Çalışma tamamlandı!', {
-              body: `${Math.floor(duration / 60)} dakika çalıştın ve ${timeEntry.points} puan kazandın!`,
-              icon: '/favicon.ico'
-            })
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Timer stop error:', error)
-    }
-    
-    set({
-      isRunning: false,
-      currentTime: 0,
-      startTime: null,
-      activeCategory: null,
-      activeEntryId: null,
-      description: ''
-    })
-  },
-
-  // Timer'ı duraklat (veri kaybetmeden)
-  pauseTimer: () => {
-    set({ isRunning: false })
-  },
-
-  // Timer'ı sıfırla
-  resetTimer: () => {
-    set({
-      isRunning: false,
-      currentTime: 0,
-      startTime: null,
-      activeCategory: null,
-      activeEntryId: null,
-      description: ''
-    })
-  },
-
-  // Açıklama güncelle
-  setDescription: (description: string) => {
-    set({ description })
-  },
+  isLoading: false,
 
   // Kategori seç
-  setSelectedCategory: (categoryId: string) => {
+  setSelectedCategory: (categoryId) => {
     set({ selectedCategory: categoryId })
   },
 
-  // Her saniye çağrılacak (süreyi artır)
+  // Açıklama ayarla
+  setDescription: (description) => {
+    set({ description })
+  },
+
+  // Aktif timer'ı yükle (sayfa yenilendiğinde)
+  loadActiveTimer: async () => {
+    try {
+      const response = await fetch('/api/time-entries')
+      const data = await response.json()
+      
+      if (data.activeTimer) {
+        const startTime = new Date(data.activeTimer.startTime)
+        const now = new Date()
+        const elapsed = Math.floor((now.getTime() - startTime.getTime()) / 1000)
+        
+        set({
+          isRunning: true,
+          currentTime: elapsed,
+          startTime: startTime,
+          activeTimerId: data.activeTimer.id,
+          selectedCategory: data.activeTimer.categoryId,
+          description: data.activeTimer.description || ''
+        })
+        
+        console.log('✅ Aktif timer yüklendi:', data.activeTimer)
+      }
+    } catch (error) {
+      console.error('Aktif timer yüklenemedi:', error)
+    }
+  },
+
+  // Timer başlat
+  startTimer: async (categoryId: string, description: string = '') => {
+    const state = get()
+    
+    // Zaten çalışıyorsa uyar
+    if (state.isRunning) {
+      alert('Timer zaten çalışıyor!')
+      return
+    }
+
+    if (!categoryId) {
+      alert('Lütfen bir kategori seçin!')
+      return
+    }
+
+    set({ isLoading: true })
+
+    try {
+      // İlk deneme - normal başlatma
+      let response = await fetch('/api/time-entries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          categoryId,
+          description,
+          forceClose: false
+        })
+      })
+
+      let data = await response.json()
+
+      // Aktif timer varsa kullanıcıya sor
+      if (response.status === 409 && data.requiresConfirmation) {
+        const userConfirmed = confirm(
+          data.error + '\n\nMevcut timer\'ı kapatıp yenisini başlatmak ister misiniz?'
+        )
+        
+        if (!userConfirmed) {
+          set({ isLoading: false })
+          return
+        }
+
+        // Kullanıcı onayladı, forceClose ile tekrar dene
+        response = await fetch('/api/time-entries', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            categoryId,
+            description,
+            forceClose: true
+          })
+        })
+        
+        data = await response.json()
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Timer başlatılamadı')
+      }
+
+      // Timer başarıyla başlatıldı
+      const now = new Date()
+      set({
+        isRunning: true,
+        currentTime: 0,
+        startTime: now,
+        activeTimerId: data.timer.id,
+        selectedCategory: categoryId,
+        description: description,
+        isLoading: false
+      })
+
+      console.log('✅ Timer başlatıldı:', data.timer)
+
+      // Bildirim izni iste
+      if ('Notification' in window && Notification.permission === 'default') {
+        await Notification.requestPermission()
+      }
+
+    } catch (error: any) {
+      console.error('❌ Timer başlatma hatası:', error)
+      alert(error.message || 'Timer başlatılamadı')
+      set({ isLoading: false })
+    }
+  },
+
+  // Timer durdur
+  stopTimer: async () => {
+    const state = get()
+    
+    if (!state.isRunning || !state.activeTimerId) {
+      console.warn('Durdurulacak timer yok')
+      return
+    }
+
+    set({ isLoading: true })
+
+    try {
+      const response = await fetch('/api/time-entries', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          timerId: state.activeTimerId
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Timer durdurulamadı')
+      }
+
+      // Başarı bildirimi
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('🎉 Çalışma Tamamlandı!', {
+          body: data.message,
+          icon: '/favicon.ico'
+        })
+      }
+
+      // State sıfırla
+      set({
+        isRunning: false,
+        currentTime: 0,
+        startTime: null,
+        activeTimerId: null,
+        description: '',
+        isLoading: false
+      })
+
+      console.log('✅ Timer durduruldu:', data)
+
+      // Sayfayı yenile (istatistikleri güncellemek için)
+      setTimeout(() => {
+        window.location.reload()
+      }, 1000)
+
+    } catch (error: any) {
+      console.error('❌ Timer durdurma hatası:', error)
+      alert(error.message || 'Timer durdurulamadı')
+      set({ isLoading: false })
+    }
+  },
+
+  // Timer duraklat (sadece görsel, backend'e kaydetmez)
+  pauseTimer: () => {
+    set({ isRunning: false })
+    console.log('⏸️ Timer duraklatıldı')
+  },
+
+  // Timer devam ettir
+  resumeTimer: () => {
+    const state = get()
+    if (state.activeTimerId) {
+      set({ isRunning: true })
+      console.log('▶️ Timer devam ettiriliyor')
+    }
+  },
+
+  // Timer sıfırla/iptal et
+  resetTimer: async () => {
+    const state = get()
+    
+    if (!state.activeTimerId) {
+      set({
+        isRunning: false,
+        currentTime: 0,
+        startTime: null,
+        description: ''
+      })
+      return
+    }
+
+    const confirmReset = confirm('Timer iptal edilecek. Emin misiniz?')
+    if (!confirmReset) return
+
+    try {
+      await fetch(`/api/time-entries?id=${state.activeTimerId}`, {
+        method: 'DELETE'
+      })
+      
+      console.log('🔄 Timer iptal edildi')
+    } catch (error) {
+      console.error('Timer iptal edilemedi:', error)
+    }
+
+    // State sıfırla
+    set({
+      isRunning: false,
+      currentTime: 0,
+      startTime: null,
+      activeTimerId: null,
+      description: ''
+    })
+  },
+
+  // Her saniye sayacı artır
   tick: () => {
     const state = get()
     if (state.isRunning) {
@@ -183,20 +281,6 @@ export const formatTime = (seconds: number): string => {
   const minutes = Math.floor((seconds % 3600) / 60)
   const secs = seconds % 60
 
-  if (hours > 0) {
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-  }
-  return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
-}
-
-export const getTimeBreakdown = (seconds: number) => {
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  
-  return {
-    hours,
-    minutes,
-    seconds: seconds % 60,
-    totalMinutes: Math.floor(seconds / 60)
-  }
+  const pad = (num: number) => num.toString().padStart(2, '0')
+  return `${pad(hours)}:${pad(minutes)}:${pad(secs)}`
 }
