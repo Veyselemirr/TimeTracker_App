@@ -11,45 +11,57 @@ import {
   Clock,
   Timer as TimerIcon
 } from 'lucide-react'
+import { useSession } from 'next-auth/react'
 
 interface CircularTimerProps {
   size?: number
 }
 
 export function CircularTimer({ size = 420 }: CircularTimerProps) {
+  const { data: session } = useSession()
+  
   const {
     isRunning,
     currentTime,
     selectedCategory,
+    activeTimerId,
+    isLoading,
     startTimer,
     stopTimer,
     pauseTimer,
+    resumeTimer,
     resetTimer,
-    tick
+    tick,
+    loadActiveTimer
   } = useTimerStore()
 
   const [timerMode, setTimerMode] = useState<'stopwatch' | 'countdown'>('stopwatch')
   const [targetTime, setTargetTime] = useState(3600) // 1 saat default
+  const [selectedCategoryColor, setSelectedCategoryColor] = useState('#10b981')
 
-  // Kategori renklerini API'den gelen hex kodlara göre tanımla
+  // Kategori renklerini tanımla
   const categoryColors = {
-    '#10b981': { stroke: '#10b981', bg: 'from-emerald-400 to-emerald-600' }, // Yazılım
-    '#3b82f6': { stroke: '#3b82f6', bg: 'from-blue-400 to-blue-600' },       // Matematik
-    '#8b5cf6': { stroke: '#8b5cf6', bg: 'from-purple-400 to-purple-600' },   // Kitap
-    '#f97316': { stroke: '#f97316', bg: 'from-orange-400 to-orange-600' },   // Egzersiz
-    '#ec4899': { stroke: '#ec4899', bg: 'from-pink-400 to-pink-600' },       // Müzik
-    '#6366f1': { stroke: '#6366f1', bg: 'from-indigo-400 to-indigo-600' },   // Tasarım
+    '#10b981': { stroke: '#10b981', bg: 'from-emerald-400 to-emerald-600' },
+    '#3b82f6': { stroke: '#3b82f6', bg: 'from-blue-400 to-blue-600' },
+    '#8b5cf6': { stroke: '#8b5cf6', bg: 'from-purple-400 to-purple-600' },
+    '#f97316': { stroke: '#f97316', bg: 'from-orange-400 to-orange-600' },
+    '#ec4899': { stroke: '#ec4899', bg: 'from-pink-400 to-pink-600' },
+    '#6366f1': { stroke: '#6366f1', bg: 'from-indigo-400 to-indigo-600' },
     'default': { stroke: '#10b981', bg: 'from-emerald-400 to-emerald-600' }
   }
 
-  // Aktif renk seçimi - selectedCategory artık hex rengi değil ID
-  const [selectedCategoryColor, setSelectedCategoryColor] = useState('#10b981')
-  
-  // Seçilen kategorinin rengini API'den al
+  // Sayfa yüklendiğinde aktif timer'ı kontrol et
   useEffect(() => {
-    if (selectedCategory) {
-      // API'den kategori bilgisini çek
-      fetch(`/api/categories?userId=temp-user`)
+    if (session?.user?.id) {
+      console.log('🔍 Aktif timer kontrol ediliyor...')
+      loadActiveTimer()
+    }
+  }, [session, loadActiveTimer])
+
+  // Seçilen kategorinin rengini al
+  useEffect(() => {
+    if (selectedCategory && session?.user?.id) {
+      fetch('/api/categories')
         .then(res => res.json())
         .then(data => {
           const category = data.categories?.find((cat: any) => cat.id === selectedCategory)
@@ -59,14 +71,14 @@ export function CircularTimer({ size = 420 }: CircularTimerProps) {
         })
         .catch(console.error)
     }
-  }, [selectedCategory])
+  }, [selectedCategory, session])
 
   const activeColor = categoryColors[selectedCategoryColor as keyof typeof categoryColors] || categoryColors.default
 
   // Progress hesaplama
   const progress = timerMode === 'countdown' 
     ? Math.max(0, ((targetTime - currentTime) / targetTime) * 100)
-    : ((currentTime % 3600) / 3600) * 100 // 1 saatte tam tur
+    : ((currentTime % 3600) / 3600) * 100
 
   const radius = (size - 30) / 2
   const circumference = 2 * Math.PI * radius
@@ -77,14 +89,19 @@ export function CircularTimer({ size = 420 }: CircularTimerProps) {
   useEffect(() => {
     let interval: NodeJS.Timeout
 
-    if (isRunning) {
+    if (isRunning && !isLoading) {
       interval = setInterval(() => {
         tick()
         
         // Countdown modunda süre bittiyse durdur
         if (timerMode === 'countdown' && currentTime >= targetTime) {
           stopTimer()
-          alert('⏰ Süre doldu!')
+          if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification('⏰ Süre Doldu!', {
+              body: 'Geri sayım tamamlandı!',
+              icon: '/favicon.ico'
+            })
+          }
         }
       }, 1000)
     }
@@ -92,17 +109,34 @@ export function CircularTimer({ size = 420 }: CircularTimerProps) {
     return () => {
       if (interval) clearInterval(interval)
     }
-  }, [isRunning, tick, timerMode, currentTime, targetTime, stopTimer])
+  }, [isRunning, isLoading, tick, timerMode, currentTime, targetTime, stopTimer])
 
   const handleStart = () => {
-    const categoryId = selectedCategory || 'fallback' // Fallback ID
-    startTimer(categoryId, `${timerMode === 'countdown' ? 'Countdown' : 'Stopwatch'} çalışması`)
+    if (!selectedCategory) {
+      alert('Lütfen bir kategori seçin!')
+      return
+    }
+    
+    const description = timerMode === 'countdown' 
+      ? `Geri sayım (${targetTime / 60} dakika)` 
+      : 'Kronometre çalışması'
+    
+    startTimer(selectedCategory, description)
+  }
+
+  const handlePauseResume = () => {
+    if (isRunning) {
+      pauseTimer()
+    } else if (activeTimerId) {
+      resumeTimer()
+    } else {
+      handleStart()
+    }
   }
 
   const handleModeChange = (mode: 'stopwatch' | 'countdown') => {
-    if (!isRunning) {
+    if (!isRunning && !activeTimerId) {
       setTimerMode(mode)
-      resetTimer() // Mod değiştiğinde timer'ı sıfırla
     }
   }
 
@@ -114,41 +148,53 @@ export function CircularTimer({ size = 420 }: CircularTimerProps) {
     return formatTime(currentTime)
   }
 
+  // Loading durumu
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[420px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Yükleniyor...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col items-center justify-center space-y-8 py-8">
       
-      {/* Mode Selector */}
-      <div className="flex items-center space-x-1 bg-white/90 backdrop-blur-sm rounded-full p-1 shadow-lg border border-gray-200">
-        <Button
-          size="sm"
-          onClick={() => handleModeChange('stopwatch')}
-          className={`rounded-full px-6 py-2 text-sm transition-all duration-200 ${
-            timerMode === 'stopwatch' 
-              ? `bg-gradient-to-r ${activeColor.bg} text-white shadow-md` 
-              : 'bg-transparent hover:bg-gray-50 text-gray-600'
-          }`}
-          disabled={isRunning}
-        >
-          <Clock className="w-4 h-4 mr-2" />
-          Kronometre
-        </Button>
-        <Button
-          size="sm"
-          onClick={() => handleModeChange('countdown')}
-          className={`rounded-full px-6 py-2 text-sm transition-all duration-200 ${
-            timerMode === 'countdown' 
-              ? `bg-gradient-to-r ${activeColor.bg} text-white shadow-md` 
-              : 'bg-transparent hover:bg-gray-50 text-gray-600'
-          }`}
-          disabled={isRunning}
-        >
-          <TimerIcon className="w-4 h-4 mr-2" />
-          Geri Sayım
-        </Button>
-      </div>
+      {/* Mode Selector - Sadece aktif timer yoksa göster */}
+      {!activeTimerId && (
+        <div className="flex items-center space-x-1 bg-white/90 backdrop-blur-sm rounded-full p-1 shadow-lg border border-gray-200">
+          <Button
+            size="sm"
+            onClick={() => handleModeChange('stopwatch')}
+            className={`rounded-full px-6 py-2 text-sm transition-all duration-200 ${
+              timerMode === 'stopwatch' 
+                ? `bg-gradient-to-r ${activeColor.bg} text-white shadow-md` 
+                : 'bg-transparent hover:bg-gray-50 text-gray-600'
+            }`}
+          >
+            <Clock className="w-4 h-4 mr-2" />
+            Kronometre
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => handleModeChange('countdown')}
+            className={`rounded-full px-6 py-2 text-sm transition-all duration-200 ${
+              timerMode === 'countdown' 
+                ? `bg-gradient-to-r ${activeColor.bg} text-white shadow-md` 
+                : 'bg-transparent hover:bg-gray-50 text-gray-600'
+            }`}
+          >
+            <TimerIcon className="w-4 h-4 mr-2" />
+            Geri Sayım
+          </Button>
+        </div>
+      )}
 
       {/* Countdown Target Selector */}
-      {timerMode === 'countdown' && !isRunning && (
+      {timerMode === 'countdown' && !isRunning && !activeTimerId && (
         <div className="flex items-center space-x-3 bg-white/90 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-gray-200">
           <span className="text-sm text-gray-600 font-medium">Hedef süre:</span>
           <div className="flex space-x-2">
@@ -175,22 +221,18 @@ export function CircularTimer({ size = 420 }: CircularTimerProps) {
         </div>
       )}
 
-      {/* Circular Timer Container */}
+      {/* Circular Timer */}
       <div className="relative flex items-center justify-center">
-        
-        {/* Main Timer Circle - Sadece beyaz daire */}
         <div 
           className="relative rounded-full bg-white shadow-xl"
           style={{ width: size, height: size }}
         >
-          
           {/* Progress Circle SVG */}
           <svg 
             width={size} 
             height={size} 
             className="absolute top-0 left-0 transform -rotate-90"
           >
-            {/* Background circle */}
             <circle
               cx={size / 2}
               cy={size / 2}
@@ -200,12 +242,11 @@ export function CircularTimer({ size = 420 }: CircularTimerProps) {
               fill="none"
             />
             
-            {/* Progress circle */}
             <circle
               cx={size / 2}
               cy={size / 2}
               r={radius}
-              stroke={isRunning ? "#10b981" : "#d1d5db"}
+              stroke={isRunning ? activeColor.stroke : "#d1d5db"}
               strokeWidth="6"
               fill="none"
               strokeLinecap="round"
@@ -244,7 +285,7 @@ export function CircularTimer({ size = 420 }: CircularTimerProps) {
                 isRunning ? 'bg-white animate-pulse' : 'bg-gray-400'
               }`} />
               <span className="text-xs font-semibold">
-                {isRunning ? 'Çalışıyor' : 'Durduruldu'}
+                {isRunning ? 'Çalışıyor' : activeTimerId ? 'Duraklatıldı' : 'Durduruldu'}
               </span>
             </div>
           </div>
@@ -253,19 +294,22 @@ export function CircularTimer({ size = 420 }: CircularTimerProps) {
 
       {/* Control Buttons */}
       <div className="flex items-center space-x-4">
-        {!isRunning && currentTime === 0 ? (
+        {!activeTimerId ? (
+          // Timer başlatılmamış
           <Button 
             onClick={handleStart} 
             size="lg" 
-            className="rounded-full px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 font-semibold"
+            disabled={!selectedCategory}
+            className="rounded-full px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg hover:shadow-xl transition-all duration-200 font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Play className="w-5 h-5 mr-2" />
             Başlat
           </Button>
         ) : (
+          // Timer aktif veya duraklatılmış
           <>
             <Button 
-              onClick={isRunning ? pauseTimer : handleStart} 
+              onClick={handlePauseResume} 
               size="lg" 
               className="rounded-full px-6 py-3 bg-white hover:bg-gray-50 text-gray-700 border-2 border-gray-200 hover:border-gray-300 shadow-md transition-all duration-200"
             >
@@ -288,7 +332,7 @@ export function CircularTimer({ size = 420 }: CircularTimerProps) {
               className="rounded-full px-6 py-3 bg-white hover:bg-red-50 text-red-600 border-2 border-red-200 hover:border-red-300 shadow-md transition-all duration-200"
             >
               <Square className="w-4 h-4 mr-2" />
-              Bitir
+              Bitir ve Kaydet
             </Button>
 
             <Button 
@@ -297,11 +341,20 @@ export function CircularTimer({ size = 420 }: CircularTimerProps) {
               className="rounded-full px-6 py-3 bg-white hover:bg-gray-50 text-gray-600 border-2 border-gray-200 hover:border-gray-300 shadow-md transition-all duration-200"
             >
               <RotateCcw className="w-4 h-4 mr-2" />
-              Sıfırla
+              İptal
             </Button>
           </>
         )}
       </div>
+
+      {/* Debug Info - Development Only */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="text-xs text-gray-400 text-center space-y-1">
+          <div>Timer ID: {activeTimerId || 'Yok'}</div>
+          <div>Kategori: {selectedCategory || 'Seçilmedi'}</div>
+          <div>Durum: {isRunning ? 'Çalışıyor' : activeTimerId ? 'Duraklatıldı' : 'Durduruldu'}</div>
+        </div>
+      )}
     </div>
   )
 }

@@ -26,6 +26,7 @@ model User {
   categories  Category[]
   timeEntries TimeEntry[]
   achievements UserAchievement[]
+  goals       Goal[]  // YENİ EKLENDİ
   
   @@map("users")
 }
@@ -77,6 +78,7 @@ model Category {
   // İlişkiler
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   timeEntries TimeEntry[]
+  goals       Goal[]      // YENİ EKLENDİ
 
   @@unique([name, userId]) // Aynı kullanıcı için kategori isimleri unique
   @@map("categories")
@@ -100,6 +102,25 @@ model TimeEntry {
   category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@map("time_entries")
+}
+
+// YENİ - HEDEFLER TABLOSU
+model Goal {
+  id            String   @id @default(cuid())
+  userId        String
+  categoryId    String
+  targetMinutes Int      // Hedef dakika (günlük)
+  period        String   @default("daily") // daily, weekly, monthly
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // İlişkiler
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, categoryId, period]) // Aynı kullanıcı, kategori ve periyot için tek hedef
+  @@map("goals")
 }
 
 // Rozetler/Başarımlar
