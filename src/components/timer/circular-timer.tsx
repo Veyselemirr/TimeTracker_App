@@ -17,7 +17,7 @@ interface CircularTimerProps {
   size?: number
 }
 
-export function CircularTimer({ size = 420 }: CircularTimerProps) {
+export default function CircularTimer({ size = 420 }: CircularTimerProps) {
   const { data: session } = useSession()
   
   const {
