@@ -22,7 +22,13 @@ export async function GET(request: NextRequest) {
         isActive: true
       },
       include: {
-        category: true
+        category: {
+          select: {
+            id: true,
+            name: true,
+            color: true
+          }
+        }
       },
       orderBy: {
         createdAt: 'desc'
@@ -42,6 +48,9 @@ export async function GET(request: NextRequest) {
         startTime: {
           gte: today,
           lt: tomorrow
+        },
+        endTime: {
+          not: null // Sadece tamamlanmış seanslar
         }
       }
     })
@@ -54,14 +63,26 @@ export async function GET(request: NextRequest) {
     })
 
     // Hedeflere ilerleme bilgisini ekle
-    const goalsWithProgress = goals.map(goal => ({
-      ...goal,
-      currentMinutes: Math.floor((progressMap.get(goal.categoryId) || 0) / 60),
-      percentage: Math.min(
-        Math.round(((progressMap.get(goal.categoryId) || 0) / 60 / goal.targetMinutes) * 100),
+    const goalsWithProgress = goals.map(goal => {
+      const currentSeconds = progressMap.get(goal.categoryId) || 0
+      const currentMinutes = Math.floor(currentSeconds / 60)
+      const percentage = Math.min(
+        Math.round((currentMinutes / goal.targetMinutes) * 100),
         100
       )
-    }))
+
+      return {
+        id: goal.id,
+        categoryId: goal.categoryId,
+        categoryName: goal.category.name,
+        categoryColor: goal.category.color,
+        targetMinutes: goal.targetMinutes,
+        currentMinutes,
+        percentage,
+        period: goal.period,
+        isActive: goal.isActive
+      }
+    })
 
     return NextResponse.json({
       goals: goalsWithProgress,
@@ -146,7 +167,13 @@ export async function POST(request: NextRequest) {
         isActive: true
       },
       include: {
-        category: true
+        category: {
+          select: {
+            id: true,
+            name: true,
+            color: true
+          }
+        }
       }
     })
 
@@ -210,7 +237,13 @@ export async function PUT(request: NextRequest) {
         updatedAt: new Date()
       },
       include: {
-        category: true
+        category: {
+          select: {
+            id: true,
+            name: true,
+            color: true
+          }
+        }
       }
     })
 
