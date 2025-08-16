@@ -1,7 +1,7 @@
 'use client'
 
 import { useTimerStore } from '@/store/timer-store'
-import { CircularTimer } from '@/components/timer/circular-timer'
+import CircularTimer from '@/components/timer/circular-timer'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -26,18 +26,45 @@ interface Category {
   isDefault: boolean
 }
 
+// Hedef tipi
+interface Goal {
+  id: string
+  categoryId: string
+  categoryName: string
+  categoryColor: string
+  targetMinutes: number
+  currentMinutes: number
+  percentage: number
+}
+
+// Çalışma seansı tipi
+interface TimeEntry {
+  id: string
+  startTime: string
+  endTime: string | null
+  duration: number | null
+  description: string | null
+  points: number
+  category: {
+    name: string
+    color: string
+  }
+}
+
 export default function TimerPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const { setSelectedCategory, selectedCategory } = useTimerStore()
   const [categories, setCategories] = useState<Category[]>([])
-  const [timeEntries, setTimeEntries] = useState<any[]>([])
+  const [goals, setGoals] = useState<Goal[]>([])
+  const [timeEntries, setTimeEntries] = useState<TimeEntry[]>([])
   const [loading, setLoading] = useState(true)
+  const [goalsLoading, setGoalsLoading] = useState(true)
   const [entriesLoading, setEntriesLoading] = useState(true)
 
   // Authentication kontrolü
   useEffect(() => {
-    if (status === 'loading') return // Hala yükleniyor
+    if (status === 'loading') return
 
     if (status === 'unauthenticated') {
       router.push('/auth/signin')
@@ -51,7 +78,7 @@ export default function TimerPage() {
 
     const fetchCategories = async () => {
       try {
-        const response = await fetch(`/api/categories?userId=${session.user.id}`)
+        const response = await fetch('/api/categories')
         const data = await response.json()
         setCategories(data.categories || [])
       } catch (error) {
@@ -64,16 +91,48 @@ export default function TimerPage() {
     fetchCategories()
   }, [session?.user?.id])
 
+  // Hedefleri API'den çek
+  useEffect(() => {
+    if (!session?.user?.id) return
+
+    const fetchGoals = async () => {
+      try {
+        const response = await fetch('/api/goals')
+        const data = await response.json()
+        if (data.goals) {
+          setGoals(data.goals)
+        }
+      } catch (error) {
+        console.error('Goals fetch error:', error)
+      } finally {
+        setGoalsLoading(false)
+      }
+    }
+
+    fetchGoals()
+    
+    // Her 30 saniyede bir hedefleri güncelle (timer çalışırken ilerleme görsün)
+    const interval = setInterval(fetchGoals, 30000)
+    return () => clearInterval(interval)
+  }, [session?.user?.id])
+
   // Bugünkü zaman kayıtlarını çek
   useEffect(() => {
     if (!session?.user?.id) return
 
     const fetchTodayEntries = async () => {
       try {
-        const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
-        const response = await fetch(`/api/time-entries?userId=${session.user.id}&date=${today}`)
+        const today = new Date().toISOString().split('T')[0]
+        const response = await fetch(`/api/time-entries?date=${today}`)
         const data = await response.json()
-        setTimeEntries(data.timeEntries || [])
+        
+        if (data.timers) {
+          // Sadece tamamlanmış seansları filtrele
+          const completedEntries = data.timers.filter((timer: any) => 
+            timer.endTime && timer.duration > 0
+          )
+          setTimeEntries(completedEntries)
+        }
       } catch (error) {
         console.error('Time entries fetch error:', error)
       } finally {
@@ -83,88 +142,45 @@ export default function TimerPage() {
 
     fetchTodayEntries()
     
-    // Her 10 saniyede bir güncelle
-    const interval = setInterval(fetchTodayEntries, 10000)
+    // Her dakika güncelle (yeni tamamlanan seanslar için)
+    const interval = setInterval(fetchTodayEntries, 60000)
     return () => clearInterval(interval)
   }, [session?.user?.id])
-
-  // Kategori bazında toplam süreleri hesapla
-  const getCategoryStats = () => {
-    const stats: { [key: string]: number } = {}
-    
-    timeEntries.forEach(entry => {
-      const categoryName = entry.category?.name || 'Bilinmeyen'
-      stats[categoryName] = (stats[categoryName] || 0) + (entry.duration || 0)
-    })
-    
-    return stats
-  }
 
   // Bugünkü toplam çalışma süresi (saniye)
   const getTotalDuration = () => {
     return timeEntries.reduce((total, entry) => total + (entry.duration || 0), 0)
   }
 
-  // Hedef ilerleme hesapla
-  const calculateGoalProgress = (categoryName: string, targetMinutes: number) => {
-    const categoryStats = getCategoryStats()
-    const completedSeconds = categoryStats[categoryName] || 0
-    const completedMinutes = Math.floor(completedSeconds / 60)
-    
-    return {
-      completed: completedMinutes,
-      target: targetMinutes,
-      percentage: Math.min((completedMinutes / targetMinutes) * 100, 100)
-    }
-  }
-  
   // Helper fonksiyonlar
   const formatMinutes = (minutes: number) => {
+    if (minutes < 60) return `${minutes}dk`
     const hours = Math.floor(minutes / 60)
     const mins = minutes % 60
-    if (hours > 0) {
-      return `${hours}s ${mins}d`
-    }
-    return `${mins}d`
+    return mins > 0 ? `${hours}s ${mins}dk` : `${hours}s`
   }
 
   const formatDuration = (seconds: number) => {
+    if (seconds < 60) return `${seconds}s`
     const hours = Math.floor(seconds / 3600)
     const minutes = Math.floor((seconds % 3600) / 60)
     
     if (hours > 0) {
-      return `${hours}s ${minutes}d`
+      return `${hours}s ${minutes}dk`
     }
-    return `${minutes}d`
+    return `${minutes}dk`
+  }
+
+  const formatTimeHHMM = (dateString: string) => {
+    return new Date(dateString).toLocaleTimeString('tr-TR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    })
   }
 
   const handleCategorySelect = (categoryId: string) => {
     setSelectedCategory(categoryId)
   }
-
-  // Dinamik hedefler - kategorilere göre
-  const dailyGoals = categories.map(category => {
-    const defaultTargets: { [key: string]: number } = {
-      'Yazılım': 180,
-      'Matematik': 120, 
-      'Kitap Okuma': 60,
-      'Egzersiz': 90,
-      'Müzik': 60,
-      'Tasarım': 120
-    }
-    
-    const targetMinutes = defaultTargets[category.name] || 60
-    const progress = calculateGoalProgress(category.name, targetMinutes)
-    
-    return {
-      id: category.id,
-      category: category.name,
-      target: targetMinutes,
-      completed: progress.completed,
-      percentage: progress.percentage,
-      color: category.color
-    }
-  })
 
   return (
     <div className="relative min-h-screen">
@@ -252,7 +268,7 @@ export default function TimerPage() {
                 </CardContent>
               </Card>
 
-              {/* Daily Goals */}
+              {/* Daily Goals - Gerçek API verilerinden */}
               <Card className="bg-white/90 backdrop-blur-sm border-emerald-100 shadow-sm">
                 <CardHeader className="pb-4">
                   <CardTitle className="text-lg flex items-center gap-2 text-gray-700">
@@ -261,23 +277,33 @@ export default function TimerPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {dailyGoals.length === 0 ? (
+                  {goalsLoading ? (
+                    <div className="space-y-4">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="animate-pulse">
+                          <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                          <div className="h-2 bg-gray-200 rounded"></div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : goals.length === 0 ? (
                     <div className="text-center py-4 text-gray-500">
-                      Kategoriler yükleniyor...
+                      <p>Henüz hedef belirlenmemiş</p>
+                      <p className="text-sm mt-1">Kategorileriniz için günlük hedefler belirleyin</p>
                     </div>
                   ) : (
-                    dailyGoals.map((goal) => (
+                    goals.map((goal) => (
                       <div key={goal.id} className="space-y-2">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <div 
                               className="w-3 h-3 rounded-full"
-                              style={{ backgroundColor: goal.color }}
+                              style={{ backgroundColor: goal.categoryColor }}
                             />
-                            <span className="font-medium text-gray-700">{goal.category}</span>
+                            <span className="font-medium text-gray-700">{goal.categoryName}</span>
                           </div>
                           <span className="text-sm text-gray-500">
-                            {formatMinutes(goal.completed)} / {formatMinutes(goal.target)}
+                            {formatMinutes(goal.currentMinutes)} / {formatMinutes(goal.targetMinutes)}
                           </span>
                         </div>
                         <Progress 
@@ -286,7 +312,12 @@ export default function TimerPage() {
                         />
                         <div className="flex items-center justify-between text-xs text-gray-500">
                           <span>%{Math.round(goal.percentage)} tamamlandı</span>
-                          <span>{formatMinutes(goal.target - goal.completed)} kaldı</span>
+                          <span>
+                            {goal.percentage >= 100 
+                              ? 'Hedef tamamlandı!' 
+                              : `${formatMinutes(goal.targetMinutes - goal.currentMinutes)} kaldı`
+                            }
+                          </span>
                         </div>
                       </div>
                     ))
@@ -296,14 +327,21 @@ export default function TimerPage() {
             </div>
           </div>
 
-          {/* Alt Kısım - Bugünkü Çalışmalar */}
+          {/* Alt Kısım - Bugünkü Çalışmalar - Gerçek API verilerinden */}
           <div className="max-w-4xl mx-auto">
             <Card className="bg-white/90 backdrop-blur-sm border-emerald-100 shadow-sm">
               <CardHeader className="pb-4">
-                <CardTitle className="text-lg flex items-center gap-2 text-gray-700">
-                  <Clock className="w-5 h-5" />
-                  Bugünkü Çalışmalar
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg flex items-center gap-2 text-gray-700">
+                    <Clock className="w-5 h-5" />
+                    Bugünkü Çalışmalar
+                  </CardTitle>
+                  {timeEntries.length > 0 && (
+                    <Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
+                      {timeEntries.length} seans
+                    </Badge>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 {entriesLoading ? (
@@ -321,8 +359,8 @@ export default function TimerPage() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {timeEntries.map((entry, index) => (
-                      <div key={entry.id || index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    {timeEntries.map((entry) => (
+                      <div key={entry.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
                         <div className="flex items-center gap-4">
                           <div 
                             className="w-4 h-4 rounded-full"
@@ -339,14 +377,8 @@ export default function TimerPage() {
                             )}
                           </div>
                           <div className="text-xs text-gray-400">
-                            {new Date(entry.startTime).toLocaleTimeString('tr-TR', { 
-                              hour: '2-digit', 
-                              minute: '2-digit' 
-                            })}
-                            {entry.endTime && ` - ${new Date(entry.endTime).toLocaleTimeString('tr-TR', { 
-                              hour: '2-digit', 
-                              minute: '2-digit' 
-                            })}`}
+                            {formatTimeHHMM(entry.startTime)}
+                            {entry.endTime && ` - ${formatTimeHHMM(entry.endTime)}`}
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
