@@ -6,11 +6,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
+import { Input } from '@/components/ui/input'
+
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { 
   Target,
   Clock,
   TrendingUp,
-  Plus
+  Plus,
+  X,
+  Save,
+  Palette
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
@@ -62,6 +68,35 @@ export default function TimerPage() {
   const [goalsLoading, setGoalsLoading] = useState(true)
   const [entriesLoading, setEntriesLoading] = useState(true)
 
+  // Modal state'leri
+  const [showModal, setShowModal] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState('')
+  const [newCategoryColor, setNewCategoryColor] = useState('#3B82F6')
+  const [newCategoryDescription, setNewCategoryDescription] = useState('')
+  const [modalLoading, setModalLoading] = useState(false)
+  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+
+  // Renk seçenekleri
+  const colorOptions = [
+    '#3B82F6', // Blue
+    '#10B981', // Emerald
+    '#8B5CF6', // Purple
+    '#F59E0B', // Amber
+    '#EF4444', // Red
+    '#EC4899', // Pink
+    '#6366F1', // Indigo
+    '#84CC16', // Lime
+    '#F97316', // Orange
+    '#06B6D4', // Cyan
+    '#8B5A2B', // Brown
+    '#6B7280'  // Gray
+  ]
+
+  const showMessage = (type: 'success' | 'error', text: string) => {
+    setMessage({ type, text })
+    setTimeout(() => setMessage(null), 3000)
+  }
+
   // Authentication kontrolü
   useEffect(() => {
     if (status === 'loading') return
@@ -73,21 +108,21 @@ export default function TimerPage() {
   }, [status, router])
 
   // Kategorileri API'den çek
-  useEffect(() => {
+  const fetchCategories = async () => {
     if (!session?.user?.id) return
 
-    const fetchCategories = async () => {
-      try {
-        const response = await fetch('/api/categories')
-        const data = await response.json()
-        setCategories(data.categories || [])
-      } catch (error) {
-        console.error('Categories fetch error:', error)
-      } finally {
-        setLoading(false)
-      }
+    try {
+      const response = await fetch('/api/categories')
+      const data = await response.json()
+      setCategories(data.categories || [])
+    } catch (error) {
+      console.error('Categories fetch error:', error)
+    } finally {
+      setLoading(false)
     }
+  }
 
+  useEffect(() => {
     fetchCategories()
   }, [session?.user?.id])
 
@@ -147,6 +182,52 @@ export default function TimerPage() {
     return () => clearInterval(interval)
   }, [session?.user?.id])
 
+  // Yeni kategori kaydet
+  const handleSaveCategory = async () => {
+    if (!newCategoryName.trim()) {
+      showMessage('error', 'Kategori adı gerekli')
+      return
+    }
+
+    setModalLoading(true)
+    try {
+      const response = await fetch('/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newCategoryName.trim(),
+          description: newCategoryDescription.trim() || null,
+          color: newCategoryColor
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        showMessage('success', 'Kategori başarıyla eklendi!')
+        setShowModal(false)
+        setNewCategoryName('')
+        setNewCategoryDescription('')
+        setNewCategoryColor('#3B82F6')
+        fetchCategories() // Listeyi yenile
+      } else {
+        showMessage('error', data.error || 'Kategori eklenirken hata oluştu')
+      }
+    } catch (error) {
+      showMessage('error', 'Bağlantı hatası')
+    } finally {
+      setModalLoading(false)
+    }
+  }
+
+  // Modal'ı kapat
+  const closeModal = () => {
+    setShowModal(false)
+    setNewCategoryName('')
+    setNewCategoryDescription('')
+    setNewCategoryColor('#3B82F6')
+  }
+
   // Bugünkü toplam çalışma süresi (saniye)
   const getTotalDuration = () => {
     return timeEntries.reduce((total, entry) => total + (entry.duration || 0), 0)
@@ -200,6 +281,17 @@ export default function TimerPage() {
               Zamanını takip et, hedeflerine odaklan ve her gün biraz daha ilerle.
             </p>
           </div>
+
+          {/* Message */}
+          {message && (
+            <div className="max-w-4xl mx-auto">
+              <Alert className={message.type === 'success' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}>
+                <AlertDescription className={message.type === 'success' ? 'text-green-800' : 'text-red-800'}>
+                  {message.text}
+                </AlertDescription>
+              </Alert>
+            </div>
+          )}
 
           {/* Main Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -256,6 +348,7 @@ export default function TimerPage() {
                       
                       <Button
                         variant="ghost"
+                        onClick={() => setShowModal(true)}
                         className="h-16 flex-col space-y-2 bg-white hover:bg-gray-50 border border-dashed border-gray-300 rounded-lg transition-all duration-200 hover:scale-105"
                       >
                         <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
@@ -415,6 +508,95 @@ export default function TimerPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal - Yeni Kategori Ekle */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                <Palette className="w-6 h-6" />
+                Yeni Kategori Ekle
+              </h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={closeModal}
+                className="rounded-full"
+              >
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Kategori Adı */}
+              <div className="space-y-2">
+                <label htmlFor="categoryName" className="text-md  font-medium text-gray-700">
+                  Kategori Adı
+                </label>
+                <Input
+                  id="categoryName"
+                  placeholder="Örn: Yazılım, Spor, Müzik..."
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  maxLength={30}
+                />
+              </div>
+
+
+              {/* Renk Seçimi */}
+              <div className="space-y-3">
+                <label className="text-lg  font-medium text-gray-700">Renk Seçin</label>
+                <div className="grid grid-cols-6 mt-3 gap-2">
+                  {colorOptions.map((color) => (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => setNewCategoryColor(color)}
+                      className={`w-10 h-10 rounded-full border-2 transition-all duration-200 hover:scale-110 ${
+                        newCategoryColor === color 
+                          ? 'border-gray-800 shadow-lg' 
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                </div>
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <div 
+                    className="w-4 h-4 rounded-full border" 
+                    style={{ backgroundColor: newCategoryColor }}
+                  />
+                  <span>Seçilen renk: {newCategoryColor}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center gap-3 p-6 border-t bg-gray-50 rounded-b-2xl">
+              <Button
+                variant="outline"
+                onClick={closeModal}
+                className="flex-1"
+              >
+                İptal
+              </Button>
+              <Button
+                onClick={handleSaveCategory}
+                disabled={!newCategoryName.trim() || modalLoading}
+                className="flex-1 flex items-center gap-2"
+              >
+                {modalLoading ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                {modalLoading ? 'Kaydediliyor...' : 'Kaydet'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

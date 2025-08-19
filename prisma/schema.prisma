@@ -126,7 +126,7 @@ model Goal {
 // Rozetler/Başarımlar
 model Achievement {
   id          String   @id @default(cuid())
-  name        String   @unique
+  name        String   
   description String
   icon        String   // Icon adı
   condition   String   // JSON string (hangi şartla alınır)
