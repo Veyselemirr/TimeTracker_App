@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-// GET - Kullanıcının hedeflerini getir
 export async function GET(request: NextRequest) {
   try {
     const session = await auth()
@@ -15,84 +14,99 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Kullanıcının tüm hedeflerini kategorilerle birlikte getir
+    const userId = session.user.id
+
+    // Tüm aktif hedefleri al
     const goals = await prisma.goal.findMany({
-      where: {
-        userId: session.user.id,
-        isActive: true
+      where: { 
+        userId, 
+        isActive: true 
       },
       include: {
         category: {
           select: {
             id: true,
             name: true,
-            color: true
+            color: true,
+            icon: true
           }
         }
       },
-      orderBy: {
-        createdAt: 'desc'
-      }
+      orderBy: { createdAt: 'desc' }
+    })
+
+    // Kategorileri al (hedef oluştururken kullanmak için)
+    const categories = await prisma.category.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        name: true,
+        color: true
+      },
+      orderBy: { name: 'asc' }
     })
 
     // Bugünkü ilerlemeyi hesapla
     const today = new Date()
     today.setHours(0, 0, 0, 0)
-    const tomorrow = new Date(today)
-    tomorrow.setDate(tomorrow.getDate() + 1)
+    const todayEnd = new Date()
+    todayEnd.setHours(23, 59, 59, 999)
 
-    // Bugünkü time entries
+    // Bugünkü time entries'leri al
     const todayEntries = await prisma.timeEntry.findMany({
       where: {
-        userId: session.user.id,
-        startTime: {
-          gte: today,
-          lt: tomorrow
-        },
-        endTime: {
-          not: null // Sadece tamamlanmış seanslar
-        }
-      }
+        userId,
+        startTime: { gte: today, lte: todayEnd },
+        endTime: { not: null },
+        duration: { gt: 0 }
+      },
+      include: { category: true }
     })
 
-    // Kategori bazında bugünkü süreleri hesapla
-    const progressMap = new Map<string, number>()
-    todayEntries.forEach(entry => {
-      const current = progressMap.get(entry.categoryId) || 0
-      progressMap.set(entry.categoryId, current + (entry.duration || 0))
-    })
-
-    // Hedeflere ilerleme bilgisini ekle
+    // Her hedef için güncel progress'i hesapla
     const goalsWithProgress = goals.map(goal => {
-      const currentSeconds = progressMap.get(goal.categoryId) || 0
-      const currentMinutes = Math.floor(currentSeconds / 60)
-      const percentage = Math.min(
-        Math.round((currentMinutes / goal.targetMinutes) * 100),
-        100
+      // Bu kategorideki bugünkü çalışmalar
+      const todayCategoryEntries = todayEntries.filter(
+        entry => entry.categoryId === goal.categoryId
       )
+      
+      const todayMinutes = todayCategoryEntries.reduce(
+        (sum, entry) => sum + Math.floor((entry.duration || 0) / 60), 0
+      )
+      
+      const percentage = goal.targetMinutes > 0 
+        ? Math.min((todayMinutes / goal.targetMinutes) * 100, 100)
+        : 0
 
       return {
-        id: goal.id,
-        categoryId: goal.categoryId,
-        categoryName: goal.category.name,
-        categoryColor: goal.category.color,
-        targetMinutes: goal.targetMinutes,
-        currentMinutes,
-        percentage,
-        period: goal.period,
-        isActive: goal.isActive
+        ...goal,
+        currentMinutes: todayMinutes,
+        percentage: Math.round(percentage),
+        isCompleted: percentage >= 100,
+        remainingMinutes: Math.max(goal.targetMinutes - todayMinutes, 0)
       }
     })
 
+    // Genel istatistikler
+    const totalTargetMinutes = goals.reduce((sum, goal) => sum + goal.targetMinutes, 0)
+    const totalCurrentMinutes = goalsWithProgress.reduce((sum, goal) => sum + goal.currentMinutes, 0)
+    const completedGoals = goalsWithProgress.filter(goal => goal.isCompleted).length
+    const overallProgress = totalTargetMinutes > 0 ? (totalCurrentMinutes / totalTargetMinutes) * 100 : 0
+
     return NextResponse.json({
-      goals: goalsWithProgress,
-      summary: {
+      goals: goalsWithProgress,  // Direkt goals array döndür
+      categories,
+      stats: {
         totalGoals: goals.length,
-        completedToday: goalsWithProgress.filter(g => g.percentage >= 100).length
+        completedGoals,
+        totalTargetMinutes,
+        totalCurrentMinutes,
+        overallProgress: Math.round(overallProgress)
       }
     })
+
   } catch (error) {
-    console.error('Goals fetch error:', error)
+    console.error('Goals API error:', error)
     return NextResponse.json(
       { error: 'Hedefler yüklenemedi' },
       { status: 500 }
@@ -100,7 +114,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Yeni hedef oluştur veya güncelle
 export async function POST(request: NextRequest) {
   try {
     const session = await auth()
@@ -112,66 +125,62 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const userId = session.user.id
     const body = await request.json()
     const { categoryId, targetMinutes, period = 'daily' } = body
 
-    // Validasyon
-    if (!categoryId || !targetMinutes) {
+    // Validation
+    if (!categoryId || !targetMinutes || targetMinutes <= 0) {
       return NextResponse.json(
-        { error: 'Kategori ve hedef süre gerekli' },
-        { status: 400 }
-      )
-    }
-
-    if (targetMinutes < 1 || targetMinutes > 1440) { // Max 24 saat
-      return NextResponse.json(
-        { error: 'Hedef süre 1-1440 dakika arasında olmalı' },
+        { error: 'Geçerli kategori ve hedef süre giriniz' },
         { status: 400 }
       )
     }
 
     // Kategori kontrolü
     const category = await prisma.category.findFirst({
-      where: {
-        id: categoryId,
-        userId: session.user.id
-      }
+      where: { id: categoryId, userId }
     })
 
     if (!category) {
       return NextResponse.json(
-        { error: 'Geçersiz kategori' },
+        { error: 'Kategori bulunamadı' },
+        { status: 404 }
+      )
+    }
+
+    // Aynı kategori için hedef var mı kontrol et
+    const existingGoal = await prisma.goal.findFirst({
+      where: { 
+        userId, 
+        categoryId, 
+        period,
+        isActive: true 
+      }
+    })
+
+    if (existingGoal) {
+      return NextResponse.json(
+        { error: 'Bu kategori için zaten aktif bir hedef var' },
         { status: 400 }
       )
     }
 
-    // Upsert - varsa güncelle, yoksa oluştur
-    const goal = await prisma.goal.upsert({
-      where: {
-        userId_categoryId_period: {
-          userId: session.user.id,
-          categoryId,
-          period
-        }
-      },
-      update: {
-        targetMinutes,
-        isActive: true,
-        updatedAt: new Date()
-      },
-      create: {
-        userId: session.user.id,
+    // Yeni hedef oluştur
+    const newGoal = await prisma.goal.create({
+      data: {
+        userId,
         categoryId,
         targetMinutes,
-        period,
-        isActive: true
+        period
       },
       include: {
         category: {
           select: {
             id: true,
             name: true,
-            color: true
+            color: true,
+            icon: true
           }
         }
       }
@@ -179,11 +188,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      goal,
-      message: `${category.name} için ${targetMinutes} dakikalık hedef belirlendi`
+      data: newGoal
     })
+
   } catch (error) {
-    console.error('Goal create error:', error)
+    console.error('Goal creation error:', error)
     return NextResponse.json(
       { error: 'Hedef oluşturulamadı' },
       { status: 500 }
@@ -191,7 +200,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PUT - Hedefi güncelle
 export async function PUT(request: NextRequest) {
   try {
     const session = await auth()
@@ -203,25 +211,16 @@ export async function PUT(request: NextRequest) {
       )
     }
 
+    const userId = session.user.id
     const body = await request.json()
     const { goalId, targetMinutes, isActive } = body
 
-    if (!goalId) {
-      return NextResponse.json(
-        { error: 'Hedef ID gerekli' },
-        { status: 400 }
-      )
-    }
-
-    // Hedefin sahibi mi kontrol et
-    const existingGoal = await prisma.goal.findFirst({
-      where: {
-        id: goalId,
-        userId: session.user.id
-      }
+    // Hedef kontrolü
+    const goal = await prisma.goal.findFirst({
+      where: { id: goalId, userId }
     })
 
-    if (!existingGoal) {
+    if (!goal) {
       return NextResponse.json(
         { error: 'Hedef bulunamadı' },
         { status: 404 }
@@ -232,16 +231,16 @@ export async function PUT(request: NextRequest) {
     const updatedGoal = await prisma.goal.update({
       where: { id: goalId },
       data: {
-        targetMinutes: targetMinutes || existingGoal.targetMinutes,
-        isActive: isActive !== undefined ? isActive : existingGoal.isActive,
-        updatedAt: new Date()
+        ...(targetMinutes && { targetMinutes }),
+        ...(typeof isActive === 'boolean' && { isActive })
       },
       include: {
         category: {
           select: {
             id: true,
             name: true,
-            color: true
+            color: true,
+            icon: true
           }
         }
       }
@@ -249,9 +248,9 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      goal: updatedGoal,
-      message: 'Hedef güncellendi'
+      data: updatedGoal
     })
+
   } catch (error) {
     console.error('Goal update error:', error)
     return NextResponse.json(
@@ -261,7 +260,6 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// DELETE - Hedefi sil
 export async function DELETE(request: NextRequest) {
   try {
     const session = await auth()
@@ -273,6 +271,7 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
+    const userId = session.user.id
     const { searchParams } = new URL(request.url)
     const goalId = searchParams.get('id')
 
@@ -283,12 +282,9 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Hedefin sahibi mi kontrol et
+    // Hedef kontrolü
     const goal = await prisma.goal.findFirst({
-      where: {
-        id: goalId,
-        userId: session.user.id
-      }
+      where: { id: goalId, userId }
     })
 
     if (!goal) {
@@ -298,7 +294,7 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Soft delete - isActive'i false yap
+    // Soft delete (isActive = false)
     await prisma.goal.update({
       where: { id: goalId },
       data: { isActive: false }
@@ -306,10 +302,11 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Hedef kaldırıldı'
+      message: 'Hedef başarıyla silindi'
     })
+
   } catch (error) {
-    console.error('Goal delete error:', error)
+    console.error('Goal deletion error:', error)
     return NextResponse.json(
       { error: 'Hedef silinemedi' },
       { status: 500 }

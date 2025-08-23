@@ -74,8 +74,9 @@ export default function GoalsPage() {
 
       // Hedefleri al
       const goalsResponse = await fetch('/api/goals')
-      const goalsData = await goalsResponse.json()
-      setGoals(goalsData.goals || [])
+const goalsData = await goalsResponse.json()
+console.log('Full Goals API response:', goalsData) // Debug için
+setGoals(goalsData.data?.goals || goalsData.goals || [])
     } catch (error) {
       console.error('Data fetch error:', error)
       showMessage('error', 'Veriler yüklenemedi')

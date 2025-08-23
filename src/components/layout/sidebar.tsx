@@ -28,18 +28,6 @@ const navigation = [
     description: 'Genel bakış'
   },
   {
-    name: 'Raporlar',
-    href: '/reports',
-    icon: BarChart3,
-    description: 'Çalışma istatistikleri'
-  },
-  {
-    name: 'Kategoriler',
-    href: '/categories',
-    icon: Folder,
-    description: 'Çalışma konuları'
-  },
-  {
     name: 'Rozetler',
     href: '/achievements',
     icon: Trophy,

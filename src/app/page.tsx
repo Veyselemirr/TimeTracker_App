@@ -131,18 +131,21 @@ export default function TimerPage() {
     if (!session?.user?.id) return
 
     const fetchGoals = async () => {
-      try {
-        const response = await fetch('/api/goals')
-        const data = await response.json()
-        if (data.goals) {
-          setGoals(data.goals)
-        }
-      } catch (error) {
-        console.error('Goals fetch error:', error)
-      } finally {
-        setGoalsLoading(false)
-      }
-    }
+  try {
+    const response = await fetch('/api/goals')
+    const data = await response.json()
+    console.log('Goals API response:', data) // Debug satırı
+   if (data.data && data.data.goals) {
+  setGoals(data.data.goals)
+} else if (data.goals) {
+  setGoals(data.goals) // Backward compatibility
+}
+  } catch (error) {
+    console.error('Goals fetch error:', error)
+  } finally {
+    setGoalsLoading(false)
+  }
+}
 
     fetchGoals()
     
