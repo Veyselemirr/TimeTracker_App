@@ -1,4 +1,3 @@
-// src/app/api/auth/register/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
@@ -8,7 +7,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { name, username, email, password } = body
 
-    // Validasyon
     if (!name || !username || !email || !password) {
       return NextResponse.json(
         { error: 'Tüm alanlar gerekli' },
@@ -23,7 +21,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Username validasyon
     const usernameRegex = /^[a-zA-Z0-9_]+$/
     if (!usernameRegex.test(username)) {
       return NextResponse.json(
@@ -32,7 +29,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Email kontrol - büyük/küçük harf duyarsız
     const existingUserByEmail = await prisma.user.findUnique({
       where: { email: email.toLowerCase() }
     })
@@ -44,7 +40,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Username kontrol - büyük/küçük harf duyarsız
     const existingUserByUsername = await prisma.user.findUnique({
       where: { username: username.toLowerCase() }
     })
@@ -56,12 +51,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Şifreyi hash'le
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    // Transaction ile kullanıcı ve kategorileri oluştur
     const result = await prisma.$transaction(async (tx) => {
-      // Kullanıcı oluştur
       const user = await tx.user.create({
         data: {
           name,
@@ -71,7 +63,6 @@ export async function POST(request: NextRequest) {
         }
       })
 
-      // Default kategorileri oluştur
       const defaultCategories = [
         { 
           name: 'Yazılım', 
@@ -111,7 +102,6 @@ export async function POST(request: NextRequest) {
         },
       ]
 
-      // Kategorileri toplu oluştur
       await tx.category.createMany({
         data: defaultCategories.map(category => ({
           ...category,
@@ -123,7 +113,6 @@ export async function POST(request: NextRequest) {
       return user
     })
 
-    // Şifreyi response'dan çıkar
     const { password: _, ...userWithoutPassword } = result
 
     return NextResponse.json(
@@ -137,7 +126,6 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Registration error:', error)
     
-    // Prisma hata kodlarını kontrol et
     if (error instanceof Error) {
       if (error.message.includes('Unique constraint')) {
         return NextResponse.json(

@@ -1,4 +1,3 @@
-// src/app/goals/page.tsx
 'use client'
 
 import { useState, useEffect } from 'react'
@@ -51,14 +50,12 @@ export default function GoalsPage() {
   const [newGoals, setNewGoals] = useState<{ [key: string]: number }>({})
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
-  // Authentication kontrolü
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/auth/signin')
     }
   }, [status, router])
 
-  // Kategorileri ve hedefleri yükle
   useEffect(() => {
     if (session?.user?.id) {
       fetchData()
@@ -67,15 +64,12 @@ export default function GoalsPage() {
 
   const fetchData = async () => {
     try {
-      // Kategorileri al
       const catResponse = await fetch('/api/categories')
       const catData = await catResponse.json()
       setCategories(catData.categories || [])
 
-      // Hedefleri al
       const goalsResponse = await fetch('/api/goals')
 const goalsData = await goalsResponse.json()
-console.log('Full Goals API response:', goalsData) // Debug için
 setGoals(goalsData.data?.goals || goalsData.goals || [])
     } catch (error) {
       console.error('Data fetch error:', error)
@@ -158,7 +152,6 @@ setGoals(goalsData.data?.goals || goalsData.goals || [])
     }
   }
 
-  // Hedefi olmayan kategorileri bul
   const categoriesWithoutGoals = categories.filter(
     cat => !goals.some(goal => goal.categoryId === cat.id)
   )
@@ -175,7 +168,6 @@ setGoals(goalsData.data?.goals || goalsData.goals || [])
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 p-6">
       <div className="max-w-6xl mx-auto space-y-6">
         
-        {/* Header */}
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold text-gray-800 flex items-center justify-center gap-2">
             <Target className="w-8 h-8 text-emerald-600" />
@@ -186,7 +178,6 @@ setGoals(goalsData.data?.goals || goalsData.goals || [])
           </p>
         </div>
 
-        {/* Message */}
         {message && (
           <Alert className={message.type === 'success' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}>
             <AlertDescription className={message.type === 'success' ? 'text-green-800' : 'text-red-800'}>
@@ -195,7 +186,6 @@ setGoals(goalsData.data?.goals || goalsData.goals || [])
           </Alert>
         )}
 
-        {/* Mevcut Hedefler */}
         <Card className="bg-white/90 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -298,7 +288,6 @@ setGoals(goalsData.data?.goals || goalsData.goals || [])
           </CardContent>
         </Card>
 
-        {/* Yeni Hedef Ekle */}
         {categoriesWithoutGoals.length > 0 && (
           <Card className="bg-white/90 backdrop-blur-sm">
             <CardHeader>
@@ -350,7 +339,6 @@ setGoals(goalsData.data?.goals || goalsData.goals || [])
           </Card>
         )}
 
-        {/* İpuçları */}
         <Card className="bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">

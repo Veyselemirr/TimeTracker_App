@@ -37,7 +37,6 @@ import {
 } from 'lucide-react'
 import { RARITY_COLORS, RARITY_NAMES, CATEGORY_NAMES } from '@/lib/achievements'
 
-// Icon mapping
 const ICON_MAP: { [key: string]: any } = {
   Trophy, Award, Star, Flame, Clock, Target, TrendingUp, Crown, Medal, Zap, 
   Shield, Sword, Crosshair, Timer, Calendar, Sunrise, Moon, BookOpen, 

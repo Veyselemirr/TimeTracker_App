@@ -75,14 +75,12 @@ export default function DashboardPage() {
   const [selectedPeriod, setSelectedPeriod] = useState<'today' | 'week' | 'month'>('week')
   const [refreshing, setRefreshing] = useState(false)
 
-  // Auth kontrolü
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/auth/signin')
     }
   }, [status, router])
 
-  // Dashboard verilerini yükle
   useEffect(() => {
     if (session?.user?.id) {
       fetchDashboardData()
@@ -122,7 +120,6 @@ export default function DashboardPage() {
     }
   }
 
-  // Format fonksiyonları
   const formatDuration = (seconds: number) => {
     const hours = Math.floor(seconds / 3600)
     const minutes = Math.floor((seconds % 3600) / 60)
@@ -147,7 +144,6 @@ export default function DashboardPage() {
     return `${remainingSeconds}sn`
   }
 
-  // Chart data hazırlama
   const prepareBarChartData = () => {
     if (!data) return []
     
@@ -173,7 +169,6 @@ export default function DashboardPage() {
     })).filter(item => item.value > 0)
   }
 
-  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 flex items-center justify-center">
@@ -185,7 +180,6 @@ export default function DashboardPage() {
     )
   }
 
-  // Error state
   if (error || !data) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 flex items-center justify-center">
@@ -216,7 +210,6 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 p-4 md:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         
-        {/* Header */}
         <div className="flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0">
           <div className="text-center sm:text-left">
             <h1 className="text-2xl md:text-3xl font-bold text-gray-800 flex items-center justify-center sm:justify-start gap-2">
@@ -239,7 +232,6 @@ export default function DashboardPage() {
           </Button>
         </div>
 
-        {/* Hızlı İstatistikler */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           <Card className="bg-gradient-to-r from-emerald-500 to-green-600 text-white">
             <CardContent className="p-4 md:p-6">
@@ -306,7 +298,6 @@ export default function DashboardPage() {
           </Card>
         </div>
 
-        {/* Periyot Seçici */}
         <div className="flex justify-center">
           <div className="flex items-center space-x-1 bg-white/90 backdrop-blur-sm rounded-full p-1 shadow-lg border">
             {[
@@ -329,7 +320,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Seçili Periyot İstatistikleri */}
         <Card className="bg-white/90 backdrop-blur-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -372,12 +362,9 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Grafikler - Tam Genişlik */}
         <div className="space-y-6">
-          {/* Grafikler Grid - Yan Yana */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             
-            {/* Bar Chart */}
             <Card className="bg-white/90 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -433,7 +420,6 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
 
-            {/* Pie Chart */}
             <Card className="bg-white/90 backdrop-blur-sm">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
