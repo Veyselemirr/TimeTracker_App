@@ -1,9 +1,7 @@
-// src/app/api/time-entries/force-cleanup/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-// POST - Tüm aktif timer'ları zorla temizle
 export async function POST(request: NextRequest) {
   try {
     const session = await auth()
@@ -15,7 +13,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Kullanıcının TÜM tamamlanmamış timer'larını sil
     const deleted = await prisma.timeEntry.deleteMany({
       where: {
         userId: session.user.id,

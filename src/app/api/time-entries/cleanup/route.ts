@@ -1,9 +1,7 @@
-// src/app/api/time-entries/cleanup/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-// POST - Tamamlanmamış timer'ları temizle
 export async function POST(request: NextRequest) {
   try {
     const session = await auth()
@@ -15,7 +13,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Kullanıcının tamamlanmamış (endTime null olan) tüm timer'larını bul
     const incompleteSessions = await prisma.timeEntry.findMany({
       where: {
         userId: session.user.id,
@@ -30,19 +27,16 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Tamamlanmamış timer'ları sil veya tamamla
     const now = new Date()
     const cleanupPromises = incompleteSessions.map(async (entry) => {
       const startTime = new Date(entry.startTime)
       const duration = Math.floor((now.getTime() - startTime.getTime()) / 1000)
       
-      // Eğer 1 dakikadan kısa ise sil
       if (duration < 60) {
         return prisma.timeEntry.delete({
           where: { id: entry.id }
         })
       } else {
-        // 1 dakikadan uzunsa tamamlanmış olarak kaydet
         const points = Math.floor(duration / 60)
         return prisma.timeEntry.update({
           where: { id: entry.id },
@@ -71,7 +65,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET - Aktif timer var mı kontrol et
 export async function GET(request: NextRequest) {
   try {
     const session = await auth()

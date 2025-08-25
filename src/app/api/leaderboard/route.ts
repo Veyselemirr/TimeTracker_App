@@ -19,24 +19,19 @@ export async function GET(request: NextRequest) {
     let startDate: Date
     let endDate: Date = new Date(now)
 
-    // Periyoda göre tarih aralığını belirle
     if (period === 'daily') {
-      // Bugünün başlangıcı
       startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
       endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
     } else {
-      // Bu haftanın başlangıcı (Pazartesi)
       const day = now.getDay()
       const diff = now.getDate() - day + (day === 0 ? -6 : 1)
       startDate = new Date(now.getFullYear(), now.getMonth(), diff)
       startDate.setHours(0, 0, 0, 0)
       
-      // Haftanın sonu (Pazar)
       endDate = new Date(startDate)
       endDate.setDate(startDate.getDate() + 7)
     }
 
-    // Kullanıcıların çalışma verilerini çek
     const leaderboardData = await prisma.user.findMany({
       select: {
         id: true,
@@ -83,7 +78,6 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Liderlik tablosu verilerini hesapla
     const leaderboard = leaderboardData.map(user => {
       const totalDuration = user.timeEntries.reduce((sum, entry) => sum + (entry.duration || 0), 0)
       const totalMinutes = Math.floor(totalDuration / 60)
@@ -92,7 +86,6 @@ export async function GET(request: NextRequest) {
       const totalPoints = user.timeEntries.reduce((sum, entry) => sum + (entry.points || 0), 0) +
                          user.achievements.reduce((sum, achievement) => sum + (achievement.achievement.points || 0), 0)
       
-      // Kategori dağılımı
       const categoryStats: { [key: string]: { minutes: number; color: string; count: number } } = {}
       user.timeEntries.forEach(entry => {
         const categoryName = entry.category.name
@@ -110,7 +103,6 @@ export async function GET(request: NextRequest) {
         categoryStats[categoryName].count += 1
       })
 
-      // En çok çalışılan kategori
       const topCategory = Object.entries(categoryStats)
         .sort(([,a], [,b]) => b.minutes - a.minutes)[0]
 
@@ -134,23 +126,19 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Toplam çalışma süresine göre sırala
     leaderboard.sort((a, b) => b.totalMinutes - a.totalMinutes)
 
-    // Sıralamaları ekle
     const rankedLeaderboard = leaderboard.map((user, index) => ({
       ...user,
       rank: index + 1,
       isCurrentUser: user.id === session.user.id
     }))
 
-    // Genel istatistikler
     const totalUsers = leaderboard.length
     const activeUsers = leaderboard.filter(u => u.totalMinutes > 0).length
     const totalMinutesAll = leaderboard.reduce((sum, u) => sum + u.totalMinutes, 0)
     const averageMinutes = activeUsers > 0 ? Math.floor(totalMinutesAll / activeUsers) : 0
 
-    // Mevcut kullanıcının sıralaması
     const currentUserRank = rankedLeaderboard.find(u => u.isCurrentUser)?.rank || null
 
     return NextResponse.json({

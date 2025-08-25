@@ -1,4 +1,3 @@
-// src/app/api/calendar/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -17,16 +16,13 @@ export async function GET(request: NextRequest) {
     const userId = session.user.id
     const { searchParams } = new URL(request.url)
     
-    // Query parametreleri
     const view = searchParams.get('view') || 'month' // month, week, day, year, trend
     const date = searchParams.get('date') || new Date().toISOString().split('T')[0]
     const startDate = searchParams.get('startDate')
     const endDate = searchParams.get('endDate')
 
-    // Tarih aralığını hesapla
     const dateRange = calculateDateRange(view, date, startDate, endDate)
 
-    // Tüm time entries'leri al
     const timeEntries = await prisma.timeEntry.findMany({
       where: {
         userId,
@@ -43,13 +39,11 @@ export async function GET(request: NextRequest) {
       orderBy: { startTime: 'asc' }
     })
 
-    // Hedefleri al
     const goals = await prisma.goal.findMany({
       where: { userId, isActive: true },
       include: { category: true }
     })
 
-    // Achievement'ları al (rozet kazanılan günler için)
     const userAchievements = await prisma.userAchievement.findMany({
       where: { 
         userId,
@@ -61,7 +55,6 @@ export async function GET(request: NextRequest) {
       include: { achievement: true }
     })
 
-    // Günlük verileri hesapla
     const dailyData = calculateDailyData(
       timeEntries, 
       goals, 
@@ -69,10 +62,8 @@ export async function GET(request: NextRequest) {
       dateRange
     )
 
-    // View'a göre ek istatistikler
     const statistics = calculateStatistics(dailyData, view, timeEntries)
 
-    // Streak hesapla
     const streakData = await calculateStreakData(userId, dateRange.end)
 
     return NextResponse.json({
@@ -110,7 +101,6 @@ function calculateDateRange(view: string, date: string, startDate?: string | nul
 
   switch (view) {
     case 'week':
-      // Hafta başı (Pazartesi)
       start = new Date(baseDate)
       const day = start.getDay()
       const diff = start.getDate() - day + (day === 0 ? -6 : 1)
@@ -137,7 +127,6 @@ function calculateDateRange(view: string, date: string, startDate?: string | nul
       break
 
     case 'trend':
-      // Son 90 gün
       start = new Date(baseDate)
       start.setDate(start.getDate() - 90)
       start.setHours(0, 0, 0, 0)
@@ -145,7 +134,7 @@ function calculateDateRange(view: string, date: string, startDate?: string | nul
       end.setHours(23, 59, 59, 999)
       break
 
-    default: // month
+    default:
       start = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1)
       start.setHours(0, 0, 0, 0)
       end = new Date(baseDate.getFullYear(), baseDate.getMonth() + 1, 0)
@@ -159,7 +148,6 @@ function calculateDateRange(view: string, date: string, startDate?: string | nul
 function calculateDailyData(timeEntries: any[], goals: any[], achievements: any[], dateRange: any) {
   const dailyMap = new Map()
   
-  // Tarih aralığındaki her gün için boş entry oluştur
   const currentDate = new Date(dateRange.start)
   while (currentDate <= dateRange.end) {
     const dateKey = currentDate.toISOString().split('T')[0]
@@ -177,7 +165,6 @@ function calculateDailyData(timeEntries: any[], goals: any[], achievements: any[
     currentDate.setDate(currentDate.getDate() + 1)
   }
 
-  // Time entries'leri günlere dağıt
   timeEntries.forEach(entry => {
     const dateKey = entry.startTime.toISOString().split('T')[0]
     const dayData = dailyMap.get(dateKey)
@@ -188,7 +175,6 @@ function calculateDailyData(timeEntries: any[], goals: any[], achievements: any[
       dayData.totalSessions += 1
       dayData.hasData = true
       
-      // Kategori bazında toplama
       const categoryName = entry.category?.name || 'Bilinmeyen'
       const categoryData = dayData.categories.get(categoryName) || {
         name: categoryName,
@@ -200,7 +186,6 @@ function calculateDailyData(timeEntries: any[], goals: any[], achievements: any[
       categoryData.sessions += 1
       dayData.categories.set(categoryName, categoryData)
       
-      // Seans detayı ekle
       dayData.sessions.push({
         id: entry.id,
         startTime: entry.startTime,
@@ -213,7 +198,6 @@ function calculateDailyData(timeEntries: any[], goals: any[], achievements: any[
     }
   })
 
-  // Achievement'ları günlere ekle
   achievements.forEach(ua => {
     const dateKey = ua.achievedAt.toISOString().split('T')[0]
     const dayData = dailyMap.get(dateKey)
@@ -228,7 +212,6 @@ function calculateDailyData(timeEntries: any[], goals: any[], achievements: any[
     }
   })
 
-  // Hedef progress'i hesapla
   Array.from(dailyMap.values()).forEach(dayData => {
     dayData.goalProgress = goals.map(goal => {
       const categoryMinutes = dayData.categories.get(goal.category.name)?.minutes || 0
@@ -247,10 +230,8 @@ function calculateDailyData(timeEntries: any[], goals: any[], achievements: any[
       }
     })
 
-    // Intensity hesapla (0-100 arası)
-    dayData.intensity = Math.min((dayData.totalMinutes / 480) * 100, 100) // 8 saat = %100
+    dayData.intensity = Math.min((dayData.totalMinutes / 480) * 100, 100)
 
-    // Kategorileri array'e çevir
     dayData.categories = Array.from(dayData.categories.values())
   })
 
@@ -262,7 +243,6 @@ function calculateStatistics(dailyData: any[], view: string, timeEntries: any[])
   const totalMinutes = dailyData.reduce((sum, day) => sum + day.totalMinutes, 0)
   const totalSessions = dailyData.reduce((sum, day) => sum + day.totalSessions, 0)
 
-  // Kategori istatistikleri
   const categoryStats = new Map()
   dailyData.forEach(day => {
     day.categories.forEach((cat: any) => {
@@ -273,17 +253,15 @@ function calculateStatistics(dailyData: any[], view: string, timeEntries: any[])
     })
   })
 
-  // En iyi günler
   const bestDays = [...dailyData]
     .filter(day => day.hasData)
     .sort((a, b) => b.totalMinutes - a.totalMinutes)
     .slice(0, 5)
 
-  // Haftalık pattern (günler bazında ortalama)
   const weeklyPattern = Array(7).fill(0).map((_, index) => {
     const dayOfWeekData = dailyData.filter(day => {
       const date = new Date(day.date)
-      return date.getDay() === (index + 1) % 7 // Pazartesi = 0
+      return date.getDay() === (index + 1) % 7
     })
     
     const avgMinutes = dayOfWeekData.length > 0 
@@ -317,7 +295,6 @@ async function calculateStreakData(userId: string, endDate: Date) {
   let longestStreak = 0
   let tempStreak = 0
   
-  // Son 365 günü kontrol et
   for (let i = 0; i < 365; i++) {
     const checkDate = new Date(endDate)
     checkDate.setDate(checkDate.getDate() - i)
@@ -338,10 +315,10 @@ async function calculateStreakData(userId: string, endDate: Date) {
 
     if (hasActivity) {
       tempStreak++
-      if (i === 0) currentStreak = tempStreak // Bugünden başlayan streak
+      if (i === 0) currentStreak = tempStreak
       longestStreak = Math.max(longestStreak, tempStreak)
     } else {
-      if (i === 0) currentStreak = 0 // Bugün aktivite yok
+      if (i === 0) currentStreak = 0
       tempStreak = 0
     }
   }

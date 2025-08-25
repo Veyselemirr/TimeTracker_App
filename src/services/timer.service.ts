@@ -1,10 +1,6 @@
 import { prisma } from '@/lib/prisma'
 
 export class TimerService {
-  /**
-   * Kullanıcının aktif timer'ını kontrol et
-   * Mantık: Her kullanıcının aynı anda sadece 1 aktif timer'ı olabilir
-   */
   static async checkActiveTimer(userId: string) {
     const activeTimer = await prisma.timeEntry.findFirst({
       where: {
@@ -19,10 +15,6 @@ export class TimerService {
     return activeTimer
   }
 
-  /**
-   * Eski/yarım kalmış timer'ları temizle
-   * Mantık: 24 saatten eski ve hala açık olan timer'lar muhtemelen unutulmuş
-   */
   static async cleanupOldTimers(userId: string) {
     const yesterday = new Date()
     yesterday.setDate(yesterday.getDate() - 1)
@@ -57,10 +49,6 @@ export class TimerService {
     return oldTimers.length
   }
 
-  /**
-   * Yeni timer başlat
-   * Mantık: Önce aktif timer var mı kontrol et, varsa hata ver veya kapat
-   */
   static async startTimer(
     userId: string, 
     categoryId: string, 
@@ -116,10 +104,6 @@ export class TimerService {
     return newTimer
   }
 
-  /**
-   * Timer'ı durdur
-   * Mantık: Duration ve points hesapla, endTime kaydet
-   */
   static async stopTimer(userId: string, timerId?: string) {
     let timer
     if (timerId) {
@@ -164,10 +148,6 @@ export class TimerService {
     return updatedTimer
   }
 
-  /**
-   * Kullanıcının tüm aktif timer'larını zorla kapat
-   * Mantık: Logout veya cleanup için kullanılır
-   */
   static async forceCloseAllTimers(userId: string) {
     const activeTimers = await prisma.timeEntry.findMany({
       where: {

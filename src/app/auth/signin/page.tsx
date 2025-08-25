@@ -33,7 +33,6 @@ export default function SignInPage() {
       if (result?.error) {
         setError('Email veya şifre hatalı')
       } else {
-        // Giriş başarılı, ana sayfaya yönlendir
         router.push('/')
         router.refresh()
       }

@@ -36,7 +36,6 @@ export default function SignUpPage() {
     setError('')
     setLoading(true)
 
-    // Validasyon
     if (formData.password !== formData.confirmPassword) {
       setError('Şifreler eşleşmiyor')
       setLoading(false)
@@ -50,7 +49,6 @@ export default function SignUpPage() {
     }
 
     try {
-      // Kayıt API'sini çağır
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: {
@@ -71,10 +69,7 @@ export default function SignUpPage() {
         return
       }
 
-      // Başarılı kayıt
       setSuccess(true)
-      
-      // 2 saniye sonra otomatik giriş yap
       setTimeout(async () => {
         const result = await signIn('credentials', {
           email: formData.email,

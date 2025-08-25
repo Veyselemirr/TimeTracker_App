@@ -156,7 +156,6 @@ export default function CircularTimer({ size = 420 }: CircularTimerProps) {
   return (
     <div className="flex flex-col items-center justify-center space-y-8 py-8">
       
-      {/* Mode Selector - Sadece aktif timer yoksa göster */}
       {!activeTimerId && (
         <div className="flex items-center space-x-1 bg-white/90 backdrop-blur-sm rounded-full p-1 shadow-lg border border-gray-200">
           <Button
@@ -186,7 +185,6 @@ export default function CircularTimer({ size = 420 }: CircularTimerProps) {
         </div>
       )}
 
-      {/* Countdown Target Selector */}
       {timerMode === 'countdown' && !isRunning && !activeTimerId && (
         <div className="flex items-center space-x-3 bg-white/90 backdrop-blur-sm rounded-xl p-4 shadow-lg border border-gray-200">
           <span className="text-sm text-gray-600 font-medium">Hedef süre:</span>
@@ -214,13 +212,11 @@ export default function CircularTimer({ size = 420 }: CircularTimerProps) {
         </div>
       )}
 
-      {/* Circular Timer */}
       <div className="relative flex items-center justify-center">
         <div 
           className="relative rounded-full bg-white shadow-xl"
           style={{ width: size, height: size }}
         >
-          {/* Progress Circle SVG */}
           <svg 
             width={size} 
             height={size} 
@@ -249,16 +245,13 @@ export default function CircularTimer({ size = 420 }: CircularTimerProps) {
             />
           </svg>
 
-          {/* Center Content */}
           <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4">
             
-            {/* Time Display */}
             <div className="text-center">
               <div className="text-5xl md:text-6xl font-mono font-semibold text-gray-800 tracking-wide">
                 {getDisplayTime()}
               </div>
               
-              {/* Subtitle */}
               <div className="text-sm text-gray-500 mt-2 font-medium">
                 {timerMode === 'countdown' ? (
                   currentTime >= targetTime ? 'Süre doldu!' : 'Kalan süre'
@@ -268,7 +261,6 @@ export default function CircularTimer({ size = 420 }: CircularTimerProps) {
               </div>
             </div>
 
-            {/* Status Indicator */}
             <div className={`flex items-center space-x-2 px-4 py-2 rounded-full transition-all duration-200 ${
               isRunning 
                 ? `bg-gradient-to-r ${activeColor.bg} text-white shadow-lg` 
@@ -285,10 +277,8 @@ export default function CircularTimer({ size = 420 }: CircularTimerProps) {
         </div>
       </div>
 
-      {/* Control Buttons */}
       <div className="flex items-center space-x-4">
         {!activeTimerId ? (
-          // Timer başlatılmamış
           <Button 
             onClick={handleStart} 
             size="lg" 
@@ -299,7 +289,6 @@ export default function CircularTimer({ size = 420 }: CircularTimerProps) {
             Başlat
           </Button>
         ) : (
-          // Timer aktif veya duraklatılmış
           <>
             <Button 
               onClick={handlePauseResume} 

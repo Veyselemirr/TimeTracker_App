@@ -1,4 +1,3 @@
-// src/types/calendar.ts
 
 export interface DayData {
   date: string

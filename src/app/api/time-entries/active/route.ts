@@ -1,9 +1,7 @@
-// src/app/api/time-entries/active/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
-// GET - Aktif timer'ı getir
 export async function GET(request: NextRequest) {
   try {
     const session = await auth()
@@ -39,5 +37,3 @@ export async function GET(request: NextRequest) {
     )
   }
 }
-
-
