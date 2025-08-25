@@ -1,9 +1,7 @@
-// src/app/api/time-entries/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { TimerService } from '@/services/timer.service'
 
-// POST - Timer başlat
 export async function POST(request: NextRequest) {
   try {
     const session = await auth()
@@ -39,14 +37,13 @@ export async function POST(request: NextRequest) {
         message: 'Timer başarıyla başlatıldı'
       })
     } catch (error: any) {
-      // Aktif timer varsa özel response
       if (error.message.includes('Aktif bir timer var')) {
         return NextResponse.json(
           { 
             error: error.message,
-            requiresConfirmation: true // Frontend'e onay gerektiğini bildir
+            requiresConfirmation: true
           },
-          { status: 409 } // Conflict
+          { status: 409 }
         )
       }
 
@@ -61,7 +58,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// PUT - Timer durdur
 export async function PUT(request: NextRequest) {
   try {
     const session = await auth()
@@ -97,7 +93,6 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// GET - Timer geçmişi ve istatistikler
 export async function GET(request: NextRequest) {
   try {
     const session = await auth()
@@ -112,7 +107,6 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const date = searchParams.get('date') || new Date().toISOString().split('T')[0]
 
-    // Belirtilen günün timer'ları
     const startOfDay = new Date(date)
     startOfDay.setHours(0, 0, 0, 0)
     
@@ -135,7 +129,6 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Aktif timer
     const activeTimer = await TimerService.checkActiveTimer(session.user.id)
 
     return NextResponse.json({
@@ -156,7 +149,6 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// DELETE - Timer iptal/sil
 export async function DELETE(request: NextRequest) {
   try {
     const session = await auth()
@@ -173,7 +165,6 @@ export async function DELETE(request: NextRequest) {
     const forceCloseAll = searchParams.get('forceCloseAll') === 'true'
 
     if (forceCloseAll) {
-      // Tüm aktif timer'ları kapat
       const closed = await TimerService.forceCloseAllTimers(session.user.id)
       return NextResponse.json({
         success: true,
@@ -189,12 +180,11 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Belirli bir timer'ı sil (sadece aktif olanlar)
     await prisma.timeEntry.delete({
       where: {
         id: timerId,
         userId: session.user.id,
-        endTime: null // Sadece aktif timer'lar silinebilir
+        endTime: null
       }
     })
 
@@ -211,6 +201,4 @@ export async function DELETE(request: NextRequest) {
   }
 }
 
-// ============================================
-// IMPORT: prisma'yı import etmeyi unutmayın
 import { prisma } from '@/lib/prisma'

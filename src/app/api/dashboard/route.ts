@@ -1,4 +1,3 @@
-// src/app/api/dashboard/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
@@ -16,19 +15,16 @@ export async function GET(request: NextRequest) {
 
     const userId = session.user.id
 
-    // Tarih aralıkları
     const now = new Date()
     
-    // Bugün
     const todayStart = new Date(now)
     todayStart.setHours(0, 0, 0, 0)
     const todayEnd = new Date(now)
     todayEnd.setHours(23, 59, 59, 999)
 
-    // Bu hafta (Pazartesi başlangıçlı)
     const weekStart = new Date(now)
     const day = weekStart.getDay()
-    const diff = weekStart.getDate() - day + (day === 0 ? -6 : 1) // Pazartesi
+    const diff = weekStart.getDate() - day + (day === 0 ? -6 : 1)
     weekStart.setDate(diff)
     weekStart.setHours(0, 0, 0, 0)
     
@@ -36,11 +32,9 @@ export async function GET(request: NextRequest) {
     weekEnd.setDate(weekStart.getDate() + 6)
     weekEnd.setHours(23, 59, 59, 999)
 
-    // Bu ay
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
     const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
 
-    // Paralel veri çekme
     const [
       todayEntries,
       weekEntries,
@@ -50,7 +44,6 @@ export async function GET(request: NextRequest) {
       goals,
       userAchievements
     ] = await Promise.all([
-      // Bugünkü çalışmalar
       prisma.timeEntry.findMany({
         where: {
           userId,
@@ -61,7 +54,6 @@ export async function GET(request: NextRequest) {
         include: { category: true }
       }),
 
-      // Bu haftaki çalışmalar
       prisma.timeEntry.findMany({
         where: {
           userId,
@@ -72,7 +64,6 @@ export async function GET(request: NextRequest) {
         include: { category: true }
       }),
 
-      // Bu ayki çalışmalar
       prisma.timeEntry.findMany({
         where: {
           userId,
@@ -83,7 +74,6 @@ export async function GET(request: NextRequest) {
         include: { category: true }
       }),
 
-      // Tüm zamanlar (toplam istatistikler için)
       prisma.timeEntry.findMany({
         where: {
           userId,
@@ -93,29 +83,24 @@ export async function GET(request: NextRequest) {
         include: { category: true }
       }),
 
-      // Kategoriler
       prisma.category.findMany({
         where: { userId }
       }),
 
-      // Hedefler
       prisma.goal.findMany({
         where: { userId, isActive: true },
         include: { category: true }
       }),
 
-      // Kullanıcının rozetleri
       prisma.userAchievement.count({
         where: { userId }
       })
     ])
 
-    // Süre hesaplama fonksiyonu
     const calculateDuration = (entries: any[]) => {
       return entries.reduce((total, entry) => total + (entry.duration || 0), 0)
     }
 
-    // Kategori bazında süre hesaplama
     const calculateCategoryStats = (entries: any[]) => {
       const stats = new Map()
       
@@ -137,7 +122,6 @@ export async function GET(request: NextRequest) {
       return Array.from(stats.values()).sort((a, b) => b.duration - a.duration)
     }
 
-    // Hedef tamamlama oranları
     const goalProgress = goals.map(goal => {
       const todayCategoryEntries = todayEntries.filter(entry => entry.categoryId === goal.categoryId)
       const todayMinutes = Math.floor(calculateDuration(todayCategoryEntries) / 60)
@@ -154,7 +138,6 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Streak hesaplama (kaç gün üst üste çalıştı)
     const calculateStreak = async () => {
       const last30Days = []
       for (let i = 0; i < 30; i++) {
@@ -191,7 +174,6 @@ export async function GET(request: NextRequest) {
 
     const currentStreak = await calculateStreak()
 
-    // Toplam istatistikler
     const totalStats = {
       totalMinutes: Math.floor(calculateDuration(allTimeEntries) / 60),
       totalHours: Math.floor(calculateDuration(allTimeEntries) / 3600),
@@ -201,7 +183,6 @@ export async function GET(request: NextRequest) {
       currentStreak
     }
 
-    // Süre hesaplamaları
     const timeStats = {
       today: {
         seconds: calculateDuration(todayEntries),
@@ -223,7 +204,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Kategori istatistikleri
     const categoryStats = {
       today: calculateCategoryStats(todayEntries),
       week: calculateCategoryStats(weekEntries),

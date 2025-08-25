@@ -28,18 +28,6 @@ const navigation = [
     description: 'Genel bakış'
   },
   {
-    name: 'Raporlar',
-    href: '/reports',
-    icon: BarChart3,
-    description: 'Çalışma istatistikleri'
-  },
-  {
-    name: 'Kategoriler',
-    href: '/categories',
-    icon: Folder,
-    description: 'Çalışma konuları'
-  },
-  {
     name: 'Rozetler',
     href: '/achievements',
     icon: Trophy,
@@ -72,7 +60,6 @@ export function Sidebar() {
     <div className="fixed left-0 top-16 bottom-0 w-64 z-40">
       <div className="flex h-full flex-col gap-y-5 overflow-y-auto bg-gradient-to-b from-emerald-50 to-green-100 border-r border-emerald-200 px-6 pb-4">
         
-        {/* Quick Stats */}
         <div className="mt-6">
           <div className="rounded-lg bg-white/70 backdrop-blur-sm border border-emerald-200 p-4 shadow-sm">
             <div className="text-sm text-emerald-700 mb-2 font-medium">
@@ -90,7 +77,6 @@ export function Sidebar() {
           </div>
         </div>
 
-        {/* Navigation */}
         <nav className="flex flex-1 flex-col">
           <ul role="list" className="flex flex-1 flex-col gap-y-7">
             <li>
@@ -129,7 +115,6 @@ export function Sidebar() {
               </ul>
             </li>
 
-            {/* Alt kısım - Ayarlar */}
             <li className="mt-auto">
               <Link
                 href="/settings"

@@ -1,12 +1,9 @@
-// src/app/api/categories/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 
-// GET - Kategorileri getir
 export async function GET(request: NextRequest) {
   try {
-    // Session'dan user ID al
     const session = await auth()
     
     if (!session?.user?.id) {
@@ -23,7 +20,7 @@ export async function GET(request: NextRequest) {
         userId: userId
       },
       orderBy: [
-        { isDefault: 'desc' }, // Default kategoriler önce
+        { isDefault: 'desc' },
         { createdAt: 'asc' }
       ]
     })
@@ -38,10 +35,8 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST - Yeni kategori oluştur
 export async function POST(request: NextRequest) {
   try {
-    // Session kontrolü
     const session = await auth()
     
     if (!session?.user?.id) {
@@ -55,7 +50,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { name, description, color, icon } = body
 
-    // Validasyon
     if (!name) {
       return NextResponse.json(
         { error: 'Kategori adı gerekli' },
@@ -63,7 +57,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Aynı isimde kategori var mı kontrol et
     const existingCategory = await prisma.category.findFirst({
       where: {
         name: name,
@@ -99,7 +92,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// DELETE - Kategori sil (sadece default olmayan)
 export async function DELETE(request: NextRequest) {
   try {
     const session = await auth()
@@ -121,7 +113,6 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Kategoriyi kontrol et
     const category = await prisma.category.findFirst({
       where: {
         id: categoryId,
@@ -143,7 +134,6 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    // Kategoriyi sil
     await prisma.category.delete({
       where: { id: categoryId }
     })

@@ -1,8 +1,6 @@
-// src/store/timer-store.ts
 import { create } from 'zustand'
 
 interface TimerState {
-  // State
   isRunning: boolean
   currentTime: number
   startTime: Date | null
@@ -11,7 +9,6 @@ interface TimerState {
   description: string
   isLoading: boolean
   
-  // Actions
   startTimer: (categoryId: string, description?: string) => Promise<void>
   stopTimer: () => Promise<void>
   pauseTimer: () => void
@@ -24,7 +21,6 @@ interface TimerState {
 }
 
 export const useTimerStore = create<TimerState>((set, get) => ({
-  // Initial state
   isRunning: false,
   currentTime: 0,
   startTime: null,
@@ -33,17 +29,14 @@ export const useTimerStore = create<TimerState>((set, get) => ({
   description: '',
   isLoading: false,
 
-  // Kategori seç
   setSelectedCategory: (categoryId) => {
     set({ selectedCategory: categoryId })
   },
 
-  // Açıklama ayarla
   setDescription: (description) => {
     set({ description })
   },
 
-  // Aktif timer'ı yükle (sayfa yenilendiğinde)
   loadActiveTimer: async () => {
     try {
       const response = await fetch('/api/time-entries')
@@ -63,18 +56,16 @@ export const useTimerStore = create<TimerState>((set, get) => ({
           description: data.activeTimer.description || ''
         })
         
-        console.log('✅ Aktif timer yüklendi:', data.activeTimer)
+        console.log('Aktif timer yüklendi:', data.activeTimer)
       }
     } catch (error) {
       console.error('Aktif timer yüklenemedi:', error)
     }
   },
 
-  // Timer başlat
   startTimer: async (categoryId: string, description: string = '') => {
     const state = get()
     
-    // Zaten çalışıyorsa uyar
     if (state.isRunning) {
       alert('Timer zaten çalışıyor!')
       return
@@ -88,7 +79,6 @@ export const useTimerStore = create<TimerState>((set, get) => ({
     set({ isLoading: true })
 
     try {
-      // İlk deneme - normal başlatma
       let response = await fetch('/api/time-entries', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -101,7 +91,6 @@ export const useTimerStore = create<TimerState>((set, get) => ({
 
       let data = await response.json()
 
-      // Aktif timer varsa kullanıcıya sor
       if (response.status === 409 && data.requiresConfirmation) {
         const userConfirmed = confirm(
           data.error + '\n\nMevcut timer\'ı kapatıp yenisini başlatmak ister misiniz?'
@@ -112,7 +101,6 @@ export const useTimerStore = create<TimerState>((set, get) => ({
           return
         }
 
-        // Kullanıcı onayladı, forceClose ile tekrar dene
         response = await fetch('/api/time-entries', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -130,7 +118,6 @@ export const useTimerStore = create<TimerState>((set, get) => ({
         throw new Error(data.error || 'Timer başlatılamadı')
       }
 
-      // Timer başarıyla başlatıldı
       const now = new Date()
       set({
         isRunning: true,
@@ -142,21 +129,19 @@ export const useTimerStore = create<TimerState>((set, get) => ({
         isLoading: false
       })
 
-      console.log('✅ Timer başlatıldı:', data.timer)
+      console.log('Timer başlatıldı:', data.timer)
 
-      // Bildirim izni iste
       if ('Notification' in window && Notification.permission === 'default') {
         await Notification.requestPermission()
       }
 
     } catch (error: any) {
-      console.error('❌ Timer başlatma hatası:', error)
+      console.error('Timer başlatma hatası:', error)
       alert(error.message || 'Timer başlatılamadı')
       set({ isLoading: false })
     }
   },
 
-  // Timer durdur
   stopTimer: async () => {
     const state = get()
     
@@ -182,7 +167,6 @@ export const useTimerStore = create<TimerState>((set, get) => ({
         throw new Error(data.error || 'Timer durdurulamadı')
       }
 
-      // Başarı bildirimi
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('🎉 Çalışma Tamamlandı!', {
           body: data.message,
@@ -190,7 +174,6 @@ export const useTimerStore = create<TimerState>((set, get) => ({
         })
       }
 
-      // State sıfırla
       set({
         isRunning: false,
         currentTime: 0,
@@ -200,36 +183,32 @@ export const useTimerStore = create<TimerState>((set, get) => ({
         isLoading: false
       })
 
-      console.log('✅ Timer durduruldu:', data)
+      console.log('Timer durduruldu:', data)
 
-      // Sayfayı yenile (istatistikleri güncellemek için)
       setTimeout(() => {
         window.location.reload()
       }, 1000)
 
     } catch (error: any) {
-      console.error('❌ Timer durdurma hatası:', error)
+      console.error('Timer durdurma hatası:', error)
       alert(error.message || 'Timer durdurulamadı')
       set({ isLoading: false })
     }
   },
 
-  // Timer duraklat (sadece görsel, backend'e kaydetmez)
   pauseTimer: () => {
     set({ isRunning: false })
-    console.log('⏸️ Timer duraklatıldı')
+    console.log('Timer duraklatıldı')
   },
 
-  // Timer devam ettir
   resumeTimer: () => {
     const state = get()
     if (state.activeTimerId) {
       set({ isRunning: true })
-      console.log('▶️ Timer devam ettiriliyor')
+      console.log('Timer devam ettiriliyor')
     }
   },
 
-  // Timer sıfırla/iptal et
   resetTimer: async () => {
     const state = get()
     
@@ -251,12 +230,11 @@ export const useTimerStore = create<TimerState>((set, get) => ({
         method: 'DELETE'
       })
       
-      console.log('🔄 Timer iptal edildi')
+      console.log('Timer iptal edildi')
     } catch (error) {
       console.error('Timer iptal edilemedi:', error)
     }
 
-    // State sıfırla
     set({
       isRunning: false,
       currentTime: 0,
@@ -266,7 +244,6 @@ export const useTimerStore = create<TimerState>((set, get) => ({
     })
   },
 
-  // Her saniye sayacı artır
   tick: () => {
     const state = get()
     if (state.isRunning) {
@@ -275,7 +252,6 @@ export const useTimerStore = create<TimerState>((set, get) => ({
   }
 }))
 
-// Helper fonksiyonlar
 export const formatTime = (seconds: number): string => {
   const hours = Math.floor(seconds / 3600)
   const minutes = Math.floor((seconds % 3600) / 60)

@@ -1,4 +1,3 @@
-// src/lib/auth.ts
 import NextAuth from "next-auth"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import CredentialsProvider from "next-auth/providers/credentials"
@@ -17,12 +16,10 @@ const authConfig: NextAuthConfig = {
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        // Type guard ve validation
         if (!credentials?.email || !credentials?.password) {
           return null
         }
 
-        // Email ve password'ü string olarak cast et
         const email = String(credentials.email).toLowerCase()
         const password = String(credentials.password)
 
@@ -46,7 +43,6 @@ const authConfig: NextAuthConfig = {
             return null
           }
 
-          // Return user object for JWT
           return {
             id: user.id,
             email: user.email,

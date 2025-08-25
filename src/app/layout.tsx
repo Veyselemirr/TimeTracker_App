@@ -23,13 +23,10 @@ export default function RootLayout({
       <body className={inter.className}>
         <SessionProvider>
           <div className="min-h-screen">
-            {/* Üst Navigasyon */}
             <Navbar />
             
-            {/* Sol Sidebar */}
             <Sidebar />
             
-            {/* Ana İçerik - Sidebar margin'i ile */}
             <main className="ml-64 mt-16 p-6">
               <div className="max-w-7xl mx-auto">
                 {children}

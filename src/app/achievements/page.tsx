@@ -196,9 +196,9 @@ export default function AchievementsPage() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 flex items-center justify-center">
         <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto"></div>
           <p className="text-gray-600">Rozetler yükleniyor...</p>
         </div>
       </div>
@@ -208,7 +208,7 @@ export default function AchievementsPage() {
   // Error state
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 flex items-center justify-center">
         <Card className="w-full max-w-md">
           <CardContent className="p-6 text-center space-y-4">
             <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
@@ -216,7 +216,7 @@ export default function AchievementsPage() {
             <p className="text-gray-600">{error || 'Rozet verileri yüklenirken bir hata oluştu.'}</p>
             <Button 
               onClick={() => fetchAchievements()}
-              className="bg-purple-500 hover:bg-purple-600"
+              className="bg-emerald-500 hover:bg-emerald-600"
             >
               <RefreshCw className="w-4 h-4 mr-2" />
               Tekrar Dene
@@ -231,14 +231,14 @@ export default function AchievementsPage() {
   const filteredAchievements = getFilteredAchievements()
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 p-4 md:p-6">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50 p-4 md:p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         
         {/* Header */}
         <div className="flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0">
           <div className="text-center sm:text-left">
             <h1 className="text-2xl md:text-3xl font-bold text-gray-800 flex items-center justify-center sm:justify-start gap-2">
-              <Trophy className="w-6 h-6 md:w-8 md:h-8 text-purple-600" />
+              <Trophy className="w-6 h-6 md:w-8 md:h-8 text-emerald-600" />
               Rozetler & Başarımlar
             </h1>
             <p className="text-gray-600 mt-1">
@@ -286,16 +286,16 @@ export default function AchievementsPage() {
 
         {/* İstatistik Kartları */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+          <Card className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white">
             <CardContent className="p-4 md:p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-purple-100 text-xs md:text-sm">Toplam Puan</p>
+                  <p className="text-emerald-100 text-xs md:text-sm">Toplam Puan</p>
                   <p className="text-lg md:text-2xl font-bold">
                     {data.totalPoints.toLocaleString()}
                   </p>
                 </div>
-                <Star className="w-6 h-6 md:w-8 md:h-8 text-purple-100" />
+                <Star className="w-6 h-6 md:w-8 md:h-8 text-emerald-100" />
               </div>
             </CardContent>
           </Card>
@@ -379,7 +379,7 @@ export default function AchievementsPage() {
                 onClick={() => setSelectedCategory(filter.key)}
                 className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm transition-all duration-200 ${
                   selectedCategory === filter.key
-                    ? 'bg-purple-500 text-white shadow-md'
+                    ? 'bg-emerald-500 text-white shadow-md'
                     : 'bg-white/80 text-gray-600 hover:bg-gray-50 border'
                 }`}
               >
@@ -413,7 +413,7 @@ export default function AchievementsPage() {
                   {/* Header */}
                   <div className="flex items-start justify-between">
                     <div className={`p-3 rounded-full ${
-                      isLocked ? 'bg-gray-200' : 'bg-gradient-to-br from-purple-100 to-pink-100'
+                      isLocked ? 'bg-gray-200' : 'bg-gradient-to-br from-emerald-100 to-green-100'
                     }`}>
                       {isLocked ? (
                         <Lock className="w-6 h-6 text-gray-400" />
