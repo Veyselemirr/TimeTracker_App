@@ -22,7 +22,6 @@ import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 
-// API'den gelecek kategori tipi
 interface Category {
   id: string
   name: string
@@ -32,7 +31,6 @@ interface Category {
   isDefault: boolean
 }
 
-// Hedef tipi
 interface Goal {
   id: string
   categoryId: string
@@ -43,7 +41,6 @@ interface Goal {
   percentage: number
 }
 
-// Çalışma seansı tipi
 interface TimeEntry {
   id: string
   startTime: string
@@ -68,7 +65,6 @@ export default function TimerPage() {
   const [goalsLoading, setGoalsLoading] = useState(true)
   const [entriesLoading, setEntriesLoading] = useState(true)
 
-  // Modal state'leri
   const [showModal, setShowModal] = useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [newCategoryColor, setNewCategoryColor] = useState('#3B82F6')
@@ -76,7 +72,6 @@ export default function TimerPage() {
   const [modalLoading, setModalLoading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
-  // Renk seçenekleri
   const colorOptions = [
     '#3B82F6', // Blue
     '#10B981', // Emerald
@@ -97,7 +92,6 @@ export default function TimerPage() {
     setTimeout(() => setMessage(null), 3000)
   }
 
-  // Authentication kontrolü
   useEffect(() => {
     if (status === 'loading') return
 
@@ -107,7 +101,6 @@ export default function TimerPage() {
     }
   }, [status, router])
 
-  // Kategorileri API'den çek
   const fetchCategories = async () => {
     if (!session?.user?.id) return
 
@@ -126,7 +119,6 @@ export default function TimerPage() {
     fetchCategories()
   }, [session?.user?.id])
 
-  // Hedefleri API'den çek
   useEffect(() => {
     if (!session?.user?.id) return
 
@@ -134,11 +126,11 @@ export default function TimerPage() {
   try {
     const response = await fetch('/api/goals')
     const data = await response.json()
-    console.log('Goals API response:', data) // Debug satırı
+    console.log('Goals API response:', data)
    if (data.data && data.data.goals) {
   setGoals(data.data.goals)
 } else if (data.goals) {
-  setGoals(data.goals) // Backward compatibility
+  setGoals(data.goals)
 }
   } catch (error) {
     console.error('Goals fetch error:', error)
@@ -149,12 +141,10 @@ export default function TimerPage() {
 
     fetchGoals()
     
-    // Her 30 saniyede bir hedefleri güncelle (timer çalışırken ilerleme görsün)
     const interval = setInterval(fetchGoals, 30000)
     return () => clearInterval(interval)
   }, [session?.user?.id])
 
-  // Bugünkü zaman kayıtlarını çek
   useEffect(() => {
     if (!session?.user?.id) return
 
@@ -165,7 +155,6 @@ export default function TimerPage() {
         const data = await response.json()
         
         if (data.timers) {
-          // Sadece tamamlanmış seansları filtrele
           const completedEntries = data.timers.filter((timer: any) => 
             timer.endTime && timer.duration > 0
           )
@@ -180,12 +169,10 @@ export default function TimerPage() {
 
     fetchTodayEntries()
     
-    // Her dakika güncelle (yeni tamamlanan seanslar için)
     const interval = setInterval(fetchTodayEntries, 60000)
     return () => clearInterval(interval)
   }, [session?.user?.id])
 
-  // Yeni kategori kaydet
   const handleSaveCategory = async () => {
     if (!newCategoryName.trim()) {
       showMessage('error', 'Kategori adı gerekli')
@@ -212,7 +199,7 @@ export default function TimerPage() {
         setNewCategoryName('')
         setNewCategoryDescription('')
         setNewCategoryColor('#3B82F6')
-        fetchCategories() // Listeyi yenile
+        fetchCategories()
       } else {
         showMessage('error', data.error || 'Kategori eklenirken hata oluştu')
       }
@@ -223,7 +210,6 @@ export default function TimerPage() {
     }
   }
 
-  // Modal'ı kapat
   const closeModal = () => {
     setShowModal(false)
     setNewCategoryName('')
@@ -231,12 +217,10 @@ export default function TimerPage() {
     setNewCategoryColor('#3B82F6')
   }
 
-  // Bugünkü toplam çalışma süresi (saniye)
   const getTotalDuration = () => {
     return timeEntries.reduce((total, entry) => total + (entry.duration || 0), 0)
   }
 
-  // Helper fonksiyonlar
   const formatMinutes = (minutes: number) => {
     if (minutes < 60) return `${minutes}dk`
     const hours = Math.floor(minutes / 60)
@@ -268,14 +252,11 @@ export default function TimerPage() {
 
   return (
     <div className="relative min-h-screen">
-      {/* Full Screen Background */}
       <div className="fixed inset-0 bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50" />
       
-      {/* Main Content */}
       <div className="relative z-10">
         <div className="space-y-6">
           
-          {/* Header */}
           <div className="text-center space-y-2 pt-4">
             <h1 className="text-3xl font-bold text-gray-800">
               Timer
@@ -285,7 +266,6 @@ export default function TimerPage() {
             </p>
           </div>
 
-          {/* Message */}
           {message && (
             <div className="max-w-4xl mx-auto">
               <Alert className={message.type === 'success' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}>
@@ -296,20 +276,16 @@ export default function TimerPage() {
             </div>
           )}
 
-          {/* Main Content Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
             
-            {/* Sol Taraf - Timer */}
             <div className="lg:col-span-3">
               <div className="flex justify-start pl-8">
                 <CircularTimer size={420} />
               </div>
             </div>
 
-            {/* Sağ Taraf - Kategori Seçimi ve Hedefler */}
             <div className="lg:col-span-2 space-y-6">
               
-              {/* Category Selection */}
               <Card className="bg-white/90 backdrop-blur-sm border-emerald-100 shadow-sm">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center gap-2 text-gray-700">
@@ -364,7 +340,6 @@ export default function TimerPage() {
                 </CardContent>
               </Card>
 
-              {/* Daily Goals - Gerçek API verilerinden */}
               <Card className="bg-white/90 backdrop-blur-sm border-emerald-100 shadow-sm">
                 <CardHeader className="pb-4">
                   <CardTitle className="text-lg flex items-center gap-2 text-gray-700">
@@ -423,7 +398,6 @@ export default function TimerPage() {
             </div>
           </div>
 
-          {/* Alt Kısım - Bugünkü Çalışmalar - Gerçek API verilerinden */}
           <div className="max-w-4xl mx-auto">
             <Card className="bg-white/90 backdrop-blur-sm border-emerald-100 shadow-sm">
               <CardHeader className="pb-4">
@@ -490,7 +464,6 @@ export default function TimerPage() {
                       </div>
                     ))}
                     
-                    {/* Toplam */}
                     <div className="border-t border-gray-200 pt-4 mt-4">
                       <div className="flex items-center justify-between font-semibold text-gray-700 text-lg">
                         <span>Toplam Çalışma</span>
@@ -512,7 +485,6 @@ export default function TimerPage() {
         </div>
       </div>
 
-      {/* Modal - Yeni Kategori Ekle */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-auto">
@@ -532,7 +504,6 @@ export default function TimerPage() {
             </div>
 
             <div className="p-6 space-y-4">
-              {/* Kategori Adı */}
               <div className="space-y-2">
                 <label htmlFor="categoryName" className="text-md  font-medium text-gray-700">
                   Kategori Adı
@@ -547,7 +518,6 @@ export default function TimerPage() {
               </div>
 
 
-              {/* Renk Seçimi */}
               <div className="space-y-3">
                 <label className="text-lg  font-medium text-gray-700">Renk Seçin</label>
                 <div className="grid grid-cols-6 mt-3 gap-2">
@@ -575,7 +545,6 @@ export default function TimerPage() {
               </div>
             </div>
 
-            {/* Modal Footer */}
             <div className="flex items-center gap-3 p-6 border-t bg-gray-50 rounded-b-2xl">
               <Button
                 variant="outline"

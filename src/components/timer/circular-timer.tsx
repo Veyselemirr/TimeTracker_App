@@ -39,7 +39,6 @@ export default function CircularTimer({ size = 420 }: CircularTimerProps) {
   const [targetTime, setTargetTime] = useState(3600) // 1 saat default
   const [selectedCategoryColor, setSelectedCategoryColor] = useState('#10b981')
 
-  // Kategori renklerini tanımla
   const categoryColors = {
     '#10b981': { stroke: '#10b981', bg: 'from-emerald-400 to-emerald-600' },
     '#3b82f6': { stroke: '#3b82f6', bg: 'from-blue-400 to-blue-600' },
@@ -50,15 +49,13 @@ export default function CircularTimer({ size = 420 }: CircularTimerProps) {
     'default': { stroke: '#10b981', bg: 'from-emerald-400 to-emerald-600' }
   }
 
-  // Sayfa yüklendiğinde aktif timer'ı kontrol et
   useEffect(() => {
     if (session?.user?.id) {
-      console.log('🔍 Aktif timer kontrol ediliyor...')
+      console.log('Aktif timer kontrol ediliyor...')
       loadActiveTimer()
     }
   }, [session, loadActiveTimer])
 
-  // Seçilen kategorinin rengini al
   useEffect(() => {
     if (selectedCategory && session?.user?.id) {
       fetch('/api/categories')
@@ -75,7 +72,6 @@ export default function CircularTimer({ size = 420 }: CircularTimerProps) {
 
   const activeColor = categoryColors[selectedCategoryColor as keyof typeof categoryColors] || categoryColors.default
 
-  // Progress hesaplama
   const progress = timerMode === 'countdown' 
     ? Math.max(0, ((targetTime - currentTime) / targetTime) * 100)
     : ((currentTime % 3600) / 3600) * 100
@@ -85,7 +81,6 @@ export default function CircularTimer({ size = 420 }: CircularTimerProps) {
   const strokeDasharray = circumference
   const strokeDashoffset = circumference - (progress / 100) * circumference
 
-  // Her saniye tick
   useEffect(() => {
     let interval: NodeJS.Timeout
 
@@ -93,7 +88,6 @@ export default function CircularTimer({ size = 420 }: CircularTimerProps) {
       interval = setInterval(() => {
         tick()
         
-        // Countdown modunda süre bittiyse durdur
         if (timerMode === 'countdown' && currentTime >= targetTime) {
           stopTimer()
           if ('Notification' in window && Notification.permission === 'granted') {
@@ -148,7 +142,6 @@ export default function CircularTimer({ size = 420 }: CircularTimerProps) {
     return formatTime(currentTime)
   }
 
-  // Loading durumu
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[420px]">
@@ -347,14 +340,7 @@ export default function CircularTimer({ size = 420 }: CircularTimerProps) {
         )}
       </div>
 
-      {/* Debug Info - Development Only */}
-      {process.env.NODE_ENV === 'development' && (
-        <div className="text-xs text-gray-400 text-center space-y-1">
-          <div>Timer ID: {activeTimerId || 'Yok'}</div>
-          <div>Kategori: {selectedCategory || 'Seçilmedi'}</div>
-          <div>Durum: {isRunning ? 'Çalışıyor' : activeTimerId ? 'Duraklatıldı' : 'Durduruldu'}</div>
-        </div>
-      )}
+      
     </div>
   )
 }

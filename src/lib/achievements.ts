@@ -1,4 +1,3 @@
-// src/lib/achievements.ts
 export interface Achievement {
   id: string
   name: string
@@ -16,7 +15,6 @@ export interface Achievement {
 }
 
 export const ACHIEVEMENTS: Achievement[] = [
-  // STREAK BAŞARIMLARI
   {
     id: 'streak_beginner',
     name: 'Başlangıç Serisi',
@@ -68,7 +66,6 @@ export const ACHIEVEMENTS: Achievement[] = [
     condition: { type: 'consecutive_days', value: 365 }
   },
 
-  // SÜRE BAŞARIMLARI
   {
     id: 'time_first_step',
     name: 'İlk Adım',
@@ -120,7 +117,6 @@ export const ACHIEVEMENTS: Achievement[] = [
     condition: { type: 'daily_minutes', value: 480 }
   },
 
-  // HEDEF BAŞARIMLARI
   {
     id: 'goal_hunter',
     name: 'Hedef Avcısı',
@@ -162,7 +158,6 @@ export const ACHIEVEMENTS: Achievement[] = [
     condition: { type: 'monthly_goals_completed', value: 25 }
   },
 
-  // PERFORMANS BAŞARIMLARI
   {
     id: 'perf_early_bird',
     name: 'Erken Kuş',
@@ -204,7 +199,6 @@ export const ACHIEVEMENTS: Achievement[] = [
     condition: { type: 'continuous_work', value: 120 }
   },
 
-  // TOPLAM İSTATİSTİK BAŞARIMLARI
   {
     id: 'total_first_10',
     name: 'İlk 10 Saat',
@@ -246,7 +240,6 @@ export const ACHIEVEMENTS: Achievement[] = [
     condition: { type: 'total_hours', value: 1000 }
   },
 
-  // KATEGORİ BAŞARIMLARI
   {
     id: 'cat_expert',
     name: 'Uzman',

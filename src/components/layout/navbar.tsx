@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useSession, signOut } from 'next-auth/react'
 import { Button } from '@/components/ui/button'
@@ -28,8 +28,51 @@ import { useTimerStore, formatTime } from '@/store/timer-store'
 
 export function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [userPoints, setUserPoints] = useState<number | null>(null)
+  const [loadingPoints, setLoadingPoints] = useState(false)
   const { isRunning, currentTime } = useTimerStore()
   const { data: session, status } = useSession()
+
+  useEffect(() => {
+    if (session?.user?.id && !userPoints && !loadingPoints) {
+      fetchUserPoints()
+    }
+  }, [session, userPoints, loadingPoints])
+
+  useEffect(() => {
+    if (session?.user?.id && !isRunning && userPoints !== null) {
+      const timeoutId = setTimeout(() => {
+        fetchUserPoints()
+      }, 1500)
+      
+      return () => clearTimeout(timeoutId)
+    }
+  }, [isRunning, session, userPoints])
+
+  const fetchUserPoints = async () => {
+    try {
+      setLoadingPoints(true)
+      const response = await fetch('/api/dashboard', {
+        cache: 'no-cache'
+      })
+      
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.data?.totalStats?.totalPoints) {
+          setUserPoints(result.data.totalStats.totalPoints)
+        } else {
+          setUserPoints(0)
+        }
+      } else {
+        setUserPoints(0)
+      }
+    } catch (error) {
+      console.error('Puan bilgisi alınamadı:', error)
+      setUserPoints(0)
+    } finally {
+      setLoadingPoints(false)
+    }
+  }
 
   const handleSignOut = () => {
     signOut({ callbackUrl: '/auth/signin' })
@@ -40,9 +83,7 @@ export function Navbar() {
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           
-          {/* Sol Taraf - Logo ve Hamburger */}
           <div className="flex items-center gap-4">
-            {/* Mobile Hamburger */}
             <Button
               variant="ghost"
               size="sm"
@@ -56,7 +97,6 @@ export function Navbar() {
               )}
             </Button>
 
-            {/* Logo */}
             <Link href="/" className="flex items-center gap-2">
               <div className="bg-gradient-to-r from-emerald-500 to-green-600 rounded-lg p-2 shadow-sm">
                 <Timer className="h-6 w-6 text-white" />
@@ -69,7 +109,6 @@ export function Navbar() {
             </Link>
           </div>
 
-          {/* Orta - Aktif Timer Durumu */}
           {isRunning && session && (
             <div className="hidden md:flex items-center gap-2 bg-green-50 px-4 py-2 rounded-full border border-green-200">
               <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
@@ -79,28 +118,22 @@ export function Navbar() {
             </div>
           )}
 
-          {/* Sağ Taraf - Authentication */}
           <div className="flex items-center gap-3">
             
             {status === 'loading' ? (
               <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse" />
             ) : session ? (
               <>
-                {/* Puan Badge */}
                 <Badge variant="secondary" className="hidden sm:flex items-center gap-1 bg-emerald-100 text-emerald-700">
                   <Trophy className="h-3 w-3" />
-                  1250 Puan
+                  {loadingPoints ? (
+                    <span className="animate-pulse">Yükleniyor...</span>
+                  ) : (
+                    `${userPoints?.toLocaleString() || 0} Puan`
+                  )}
                 </Badge>
 
-                {/* Bildirimler */}
-                <Button variant="ghost" size="sm" className="relative">
-                  <Bell className="h-5 w-5" />
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                    2
-                  </span>
-                </Button>
 
-                {/* Profil Dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -143,7 +176,6 @@ export function Navbar() {
                 </DropdownMenu>
               </>
             ) : (
-              /* Giriş yapılmamış */
               <div className="flex items-center gap-2">
                 <Button variant="ghost" asChild>
                   <Link href="/auth/signin">
@@ -162,7 +194,6 @@ export function Navbar() {
         </div>
       </div>
 
-      {/* Mobile Menu */}
       {isMobileMenuOpen && (
         <div className="lg:hidden border-t border-emerald-200 bg-white/95 backdrop-blur-sm">
           <div className="px-4 py-2 space-y-1">
